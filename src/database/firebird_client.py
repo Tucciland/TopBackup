@@ -166,10 +166,10 @@ class FirebirdClient:
 
                 if row:
                     # Debug: mostra o que veio do Firebird
-                    self.logger.debug(f"AGENDA_BACKUP row: ID={row[0]}, HORARIO={row[1]}")
-                    self.logger.debug(f"  LOCAL_DESTINO1={row[9]}")
-                    self.logger.debug(f"  LOCAL_DESTINO2={row[10]}")
-                    self.logger.debug(f"  PREFIXO_BACKUP={row[12]}, BANCO_ORIGEM={row[13]}")
+                    self.logger.info(f"AGENDA_BACKUP do Firebird: ID={row[0]}, HORARIO={row[1]}")
+                    self.logger.info(f"  LOCAL_DESTINO1={row[9]}")
+                    self.logger.info(f"  LOCAL_DESTINO2={row[10]}")
+                    self.logger.info(f"  PREFIXO_BACKUP={row[12]}, BANCO_ORIGEM={row[13]}")
 
                     return AgendaBackup(
                         id=row[0],

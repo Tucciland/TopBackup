@@ -137,15 +137,34 @@ class BackupEngine:
                 raise BackupCancelledError("Backup cancelado pelo usuário")
 
             # 4. Move para destinos
-            self._report_progress(f"Movendo para: {agenda.local_destino1}")
-            self.logger.info(f"Movendo {final_path} para {agenda.local_destino1}")
-            destino1 = self._move_to_destination(
-                final_path,
-                agenda.local_destino1,
-                empresa,
-                agenda
-            )
-            self.logger.info(f"Arquivo movido para: {destino1}")
+            self.logger.info(f"=== INICIANDO MOVIMENTACAO ===")
+            self.logger.info(f"Arquivo origem: {final_path}")
+            self.logger.info(f"Arquivo existe? {os.path.exists(final_path)}")
+            self.logger.info(f"Destino agenda: {agenda.local_destino1}")
+            self.logger.info(f"Destino config: {self.settings.backup.local_destino1}")
+
+            # Usa o destino da agenda, não da config
+            destino_final = agenda.local_destino1
+            if not destino_final:
+                destino_final = self.settings.backup.local_destino1
+                self.logger.warning(f"Agenda sem destino, usando config: {destino_final}")
+
+            if not destino_final:
+                raise BackupError("Nenhum diretório de destino configurado!")
+
+            self._report_progress(f"Movendo para: {destino_final}")
+
+            try:
+                destino1 = self._move_to_destination(
+                    final_path,
+                    destino_final,
+                    empresa,
+                    agenda
+                )
+                self.logger.info(f"Arquivo movido para: {destino1}")
+            except Exception as move_error:
+                self.logger.error(f"ERRO ao mover arquivo: {move_error}")
+                raise
 
             # 5. Copia para destino secundário
             if agenda.local_destino2:
