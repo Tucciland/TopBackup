@@ -61,41 +61,54 @@ class BackupScheduler:
 
     def configure_from_agenda(self, agenda: AgendaBackup):
         """
-        Configura agendamento baseado na agenda do Firebird
+        Configura agendamento baseado em uma única agenda (compatibilidade)
+        """
+        self.configure_from_agendas([agenda])
+
+    def configure_from_agendas(self, agendas: List[AgendaBackup]):
+        """
+        Configura agendamento baseado em TODAS as agendas do Firebird
 
         Args:
-            agenda: Configurações de agendamento
+            agendas: Lista de configurações de agendamento
         """
-        # Remove job anterior se existir
+        # Remove jobs anteriores
+        for i in range(10):  # Remove até 10 jobs de backup
+            self._remove_job(f'backup_job_{i}')
         self._remove_job('backup_job')
 
-        # Obtém hora e minuto
-        hora, minuto = agenda.get_hora_minuto()
-
-        # Monta expressão cron para dias da semana
-        dias_cron = self._build_cron_days(agenda)
-
-        if not dias_cron:
-            self.logger.warning("Nenhum dia configurado para backup")
+        if not agendas:
+            self.logger.warning("Nenhuma agenda de backup configurada")
             return
 
-        # Cria trigger cron
-        trigger = CronTrigger(
-            day_of_week=dias_cron,
-            hour=hora,
-            minute=minuto
-        )
+        # Cria um job para cada agenda/horário
+        for i, agenda in enumerate(agendas):
+            hora, minuto = agenda.get_hora_minuto()
+            dias_cron = self._build_cron_days(agenda)
 
-        # Adiciona job
-        self.scheduler.add_job(
-            func=self._execute_backup_job,
-            trigger=trigger,
-            id='backup_job',
-            name='Backup Agendado',
-            replace_existing=True
-        )
+            if not dias_cron:
+                self.logger.warning(f"Agenda {i+1}: Nenhum dia configurado")
+                continue
 
-        self.logger.info(f"Backup agendado: {hora:02d}:{minuto:02d} ({dias_cron})")
+            # Cria trigger cron
+            trigger = CronTrigger(
+                day_of_week=dias_cron,
+                hour=hora,
+                minute=minuto
+            )
+
+            job_id = f'backup_job_{i}'
+
+            # Adiciona job
+            self.scheduler.add_job(
+                func=self._execute_backup_job,
+                trigger=trigger,
+                id=job_id,
+                name=f'Backup {hora:02d}:{minuto:02d}',
+                replace_existing=True
+            )
+
+            self.logger.info(f"Backup agendado: {hora:02d}:{minuto:02d} ({dias_cron})")
 
         # Atualiza próximo backup
         self._update_next_backup()
@@ -209,11 +222,17 @@ class BackupScheduler:
             pass
 
     def _update_next_backup(self):
-        """Atualiza próximo horário de backup"""
+        """Atualiza próximo horário de backup considerando TODOS os jobs"""
         try:
-            job = self.scheduler.get_job('backup_job')
-            if job and job.next_run_time:
-                self._next_backup = job.next_run_time
+            next_times = []
+            for job in self.scheduler.get_jobs():
+                if job.id.startswith('backup_job') and job.next_run_time:
+                    next_times.append(job.next_run_time)
+
+            if next_times:
+                # Pega o mais próximo
+                self._next_backup = min(next_times)
+                self.logger.debug(f"Próximo backup: {self._next_backup}")
         except Exception:
             pass
 

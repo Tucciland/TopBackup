@@ -147,8 +147,11 @@ class AppController:
             self._scheduler.set_heartbeat_callback(self._on_heartbeat_schedule)
             self._scheduler.set_update_callback(self._on_update_schedule)
 
-            # Configura agenda
-            if self._agenda:
+            # Configura TODAS as agendas de backup
+            all_agendas = self._firebird.get_all_agendas()
+            if all_agendas:
+                self._scheduler.configure_from_agendas(all_agendas)
+            elif self._agenda:
                 self._scheduler.configure_from_agenda(self._agenda)
 
             # Configura jobs do sistema
@@ -290,8 +293,12 @@ class AppController:
             self._sync_manager.sync_agenda()
             self._agenda = self._sync_manager.get_agenda()
 
-            if self._agenda and self._scheduler:
-                self._scheduler.configure_from_agenda(self._agenda)
+            if self._scheduler and self._firebird:
+                all_agendas = self._firebird.get_all_agendas()
+                if all_agendas:
+                    self._scheduler.configure_from_agendas(all_agendas)
+                elif self._agenda:
+                    self._scheduler.configure_from_agenda(self._agenda)
 
     def _on_heartbeat_schedule(self):
         """Callback para heartbeat"""
@@ -358,6 +365,7 @@ class AppController:
             'state': self._state.value,
             'empresa': self._empresa.fantasia if self._empresa else None,
             'cnpj': self._empresa.cnpj if self._empresa else None,
+            'database_path': self.settings.firebird.database_path,
             'next_backup': self.get_next_backup_time(),
             'last_backup': self._last_backup_result.arquivo if self._last_backup_result else None,
             'last_backup_success': self._last_backup_result.success if self._last_backup_result else None,
@@ -374,5 +382,9 @@ class AppController:
             self._sync_manager.full_sync()
             self._agenda = self._sync_manager.get_agenda()
 
-            if self._agenda and self._scheduler:
-                self._scheduler.configure_from_agenda(self._agenda)
+            if self._scheduler and self._firebird:
+                all_agendas = self._firebird.get_all_agendas()
+                if all_agendas:
+                    self._scheduler.configure_from_agendas(all_agendas)
+                elif self._agenda:
+                    self._scheduler.configure_from_agenda(self._agenda)

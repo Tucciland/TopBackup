@@ -137,26 +137,33 @@ class MainWindow(ctk.CTk):
         self.cnpj_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
         self.cnpj_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
-        # Próximo backup
-        ctk.CTkLabel(status_frame, text="Próximo Backup:", anchor="w").grid(
+        # Local do Banco
+        ctk.CTkLabel(status_frame, text="Banco:", anchor="w").grid(
             row=2, column=0, padx=10, pady=5, sticky="w"
         )
+        self.banco_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.banco_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+
+        # Próximo backup
+        ctk.CTkLabel(status_frame, text="Próximo Backup:", anchor="w").grid(
+            row=3, column=0, padx=10, pady=5, sticky="w"
+        )
         self.next_backup_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.next_backup_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
+        self.next_backup_label.grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
         # Último backup
         ctk.CTkLabel(status_frame, text="Último Backup:", anchor="w").grid(
-            row=3, column=0, padx=10, pady=5, sticky="w"
+            row=4, column=0, padx=10, pady=5, sticky="w"
         )
         self.last_backup_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.last_backup_label.grid(row=3, column=1, padx=10, pady=5, sticky="w")
+        self.last_backup_label.grid(row=4, column=1, padx=10, pady=5, sticky="w")
 
         # Conexões
         ctk.CTkLabel(status_frame, text="Conexões:", anchor="w").grid(
-            row=4, column=0, padx=10, pady=5, sticky="w"
+            row=5, column=0, padx=10, pady=5, sticky="w"
         )
         self.connections_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.connections_label.grid(row=4, column=1, padx=10, pady=5, sticky="w")
+        self.connections_label.grid(row=5, column=1, padx=10, pady=5, sticky="w")
 
     def _create_actions_area(self):
         """Cria área de ações"""
@@ -267,6 +274,13 @@ class MainWindow(ctk.CTk):
         # Empresa e CNPJ
         self.empresa_label.configure(text=status.get('empresa', '-') or '-')
         self.cnpj_label.configure(text=status.get('cnpj', '-') or '-')
+
+        # Local do banco
+        banco_path = status.get('database_path', '-') or '-'
+        # Trunca se muito longo
+        if len(banco_path) > 50:
+            banco_path = "..." + banco_path[-47:]
+        self.banco_label.configure(text=banco_path)
 
         # Próximo backup
         next_backup = status.get('next_backup')
