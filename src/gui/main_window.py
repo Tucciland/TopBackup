@@ -481,8 +481,17 @@ class MainWindow(ctk.CTk):
         """Abre configurações"""
         # Recarrega settings para garantir valores atualizados
         self.settings = Settings.load()
-        dialog = SettingsDialog(self, self.settings, on_save_callback=self._update_status)
+        dialog = SettingsDialog(self, self.settings, on_save_callback=self._on_settings_saved)
         dialog.grab_set()
+
+    def _on_settings_saved(self):
+        """Callback após salvar configurações"""
+        # Recarrega settings em todos os componentes do controller
+        self.controller.refresh_settings()
+        # Atualiza referência local
+        self.settings = self.controller.settings
+        # Atualiza interface
+        self._update_status()
 
     def _on_logs_click(self):
         """Abre visualizador de logs"""

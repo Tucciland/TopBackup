@@ -367,6 +367,27 @@ class AppController:
             'mysql_connected': self._sync_manager.is_connected_mysql() if self._sync_manager else False,
         }
 
+    def refresh_settings(self):
+        """
+        Recarrega configurações do arquivo config.json
+        Atualiza todas as referências nos componentes
+        """
+        self.settings = Settings.load()
+
+        # Atualiza referências em todos os componentes
+        if self._sync_manager:
+            self._sync_manager.settings = self.settings
+
+        if self._backup_engine:
+            self._backup_engine.settings = self.settings
+
+        # Atualiza agenda com os novos destinos
+        if self._agenda:
+            self._agenda.local_destino1 = self.settings.backup.local_destino1
+            self._agenda.local_destino2 = self.settings.backup.local_destino2
+
+        self.logger.info("Configurações recarregadas do arquivo")
+
     def reload_config(self, force_from_firebird: bool = True):
         """
         Recarrega configurações do Firebird
@@ -380,6 +401,9 @@ class AppController:
             # Atualiza referência de settings no sync_manager
             self._sync_manager.settings = self.settings
             self._sync_manager.refresh()
+
+        if self._backup_engine:
+            self._backup_engine.settings = self.settings
 
             # Força atualização dos destinos do Firebird
             if force_from_firebird and self._firebird:
