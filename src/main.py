@@ -20,6 +20,24 @@ else:
 sys.path.insert(0, str(BASE_DIR))
 
 
+def initialize_firebird_library():
+    """Inicializa a biblioteca Firebird antes de qualquer uso"""
+    from src.utils.firebird_loader import initialize_firebird, get_python_architecture
+
+    success, message = initialize_firebird()
+    if not success:
+        arch = get_python_architecture()
+        print(f"AVISO: {message}")
+        print(f"\nPara resolver, copie o fbclient.dll ({arch}-bit) para:")
+        print(f"  {BASE_DIR / 'assets' / 'firebird' / ('x64' if arch == 64 else 'x86')}")
+        print("\nO fbclient.dll pode ser encontrado na instalação do Firebird:")
+        if arch == 64:
+            print("  C:\\Program Files\\Firebird\\Firebird_2_5\\bin\\fbclient.dll (64-bit)")
+        else:
+            print("  C:\\Program Files (x86)\\Firebird\\Firebird_2_5\\bin\\fbclient.dll (32-bit)")
+    return success
+
+
 def is_admin() -> bool:
     """Verifica se está rodando como administrador"""
     try:
@@ -226,6 +244,9 @@ def run_backup_now():
 
 def main():
     """Função principal"""
+    # Inicializa Firebird ANTES de qualquer import que use fdb
+    initialize_firebird_library()
+
     parser = argparse.ArgumentParser(
         description="TopBackup - Sistema de Backup Automático",
         formatter_class=argparse.RawDescriptionHelpFormatter,
