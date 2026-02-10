@@ -115,6 +115,9 @@ class AppController:
             if not success:
                 return False, f"Erro de conexão MySQL: {msg}"
 
+            # Garante schema atualizado
+            self._mysql.ensure_schema()
+
             # Inicializa SyncManager
             self._sync_manager = SyncManager(
                 self._firebird,

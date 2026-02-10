@@ -187,8 +187,8 @@ class MySQLClient:
                     INSERT INTO LOG_BACKUPS
                     (ID_EMPRESA, DATA_INICIO, DATA_FIM, NOME_ARQUIVO,
                      CAMINHO_DESTINO, TAMANHO_BYTES, TAMANHO_FORMATADO,
-                     STATUS, MENSAGEM_ERRO, TIPO_BACKUP, ENVIADO_FTP, DATA_ENVIO_FTP)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     STATUS, MENSAGEM_ERRO, TIPO_BACKUP, ENVIADO_FTP, DATA_ENVIO_FTP, MANUAL)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(sql, (
                     log.id_empresa,
@@ -202,7 +202,8 @@ class MySQLClient:
                     log.mensagem_erro,
                     log.tipo_backup,
                     log.enviado_ftp,
-                    log.data_envio_ftp
+                    log.data_envio_ftp,
+                    'S' if log.manual else 'N'
                 ))
                 conn.commit()
                 return cursor.lastrowid
@@ -264,6 +265,8 @@ class MySQLClient:
 
                 logs = []
                 for row in rows:
+                    # Campo MANUAL pode não existir em bancos antigos
+                    manual_value = row.get('MANUAL', 'N')
                     logs.append(LogBackup(
                         id=row['ID'],
                         id_empresa=row['ID_EMPRESA'],
@@ -277,7 +280,8 @@ class MySQLClient:
                         mensagem_erro=row['MENSAGEM_ERRO'],
                         tipo_backup=row['TIPO_BACKUP'],
                         enviado_ftp=row['ENVIADO_FTP'],
-                        data_envio_ftp=row['DATA_ENVIO_FTP']
+                        data_envio_ftp=row['DATA_ENVIO_FTP'],
+                        manual=(manual_value == 'S')
                     ))
                 return logs
 
@@ -358,3 +362,31 @@ class MySQLClient:
         except Exception as e:
             self.logger.error(f"Erro ao atualizar contato: {e}")
             return False
+
+    # ============ SCHEMA ============
+
+    def ensure_schema(self):
+        """Garante que o schema do banco está atualizado"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Verifica se coluna MANUAL existe em LOG_BACKUPS
+                cursor.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = %s
+                    AND TABLE_NAME = 'LOG_BACKUPS'
+                    AND COLUMN_NAME = 'MANUAL'
+                """, (self.config.database,))
+
+                if cursor.fetchone()[0] == 0:
+                    # Adiciona coluna MANUAL
+                    cursor.execute("""
+                        ALTER TABLE LOG_BACKUPS
+                        ADD COLUMN MANUAL CHAR(1) DEFAULT 'N'
+                    """)
+                    conn.commit()
+                    self.logger.info("Coluna MANUAL adicionada à tabela LOG_BACKUPS")
+
+        except Exception as e:
+            self.logger.warning(f"Erro ao verificar schema: {e}")
