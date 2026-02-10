@@ -188,6 +188,59 @@ class FirebirdClient:
             self.logger.error(f"Erro ao buscar agenda de backup: {e}")
             return None
 
+    def get_all_agendas(self) -> List[AgendaBackup]:
+        """
+        Obtém TODAS as agendas de backup do Firebird
+
+        Returns:
+            Lista de AgendaBackup
+        """
+        agendas = []
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+
+                sql = """
+                    SELECT
+                        ID,
+                        HORARIO,
+                        DOM, SEG, TER, QUA, QUI, SEX, SAB,
+                        LOCAL_DESTINO1,
+                        LOCAL_DESTINO2,
+                        BACKUP_REMOTO,
+                        PREFIXO_BACKUP,
+                        BANCO_ORIGEM
+                    FROM AGENDA_BACKUP
+                    ORDER BY HORARIO
+                """
+
+                cursor.execute(sql)
+                rows = cursor.fetchall()
+
+                for row in rows:
+                    agenda = AgendaBackup(
+                        id=row[0],
+                        horario=row[1] or "23:00",
+                        dom=row[2] or 'N',
+                        seg=row[3] or 'S',
+                        ter=row[4] or 'S',
+                        qua=row[5] or 'S',
+                        qui=row[6] or 'S',
+                        sex=row[7] or 'S',
+                        sab=row[8] or 'N',
+                        local_destino1=row[9] or "",
+                        local_destino2=row[10],
+                        backup_remoto=row[11] or 'N',
+                        prefixo_backup=row[12] or 'V',
+                        banco_origem=row[13] or ""
+                    )
+                    agendas.append(agenda)
+
+        except Exception as e:
+            self.logger.error(f"Erro ao buscar agendas: {e}")
+
+        return agendas
+
     def get_versao_sistema(self) -> Optional[str]:
         """Obtém a versão do sistema local do Firebird"""
         try:

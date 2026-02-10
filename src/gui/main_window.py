@@ -14,7 +14,7 @@ from ..core.backup_engine import BackupResult
 from ..version import VERSION, APP_NAME
 from ..utils.logger import get_logger
 from .tray_icon import TrayIcon
-from .dialogs import show_info, show_error, show_warning, LogViewerDialog, SettingsDialog
+from .dialogs import show_info, show_error, show_warning, LogViewerDialog, SettingsDialog, AgendaListDialog
 
 
 class MainWindow(ctk.CTk):
@@ -204,6 +204,18 @@ class MainWindow(ctk.CTk):
             height=40
         )
         logs_btn.pack(side="left", padx=5)
+
+        # Botão de agendas
+        agendas_btn = ctk.CTkButton(
+            actions_frame,
+            text="Agendas",
+            command=self._on_agendas_click,
+            width=100,
+            height=40,
+            fg_color="purple",
+            hover_color="darkviolet"
+        )
+        agendas_btn.pack(side="left", padx=5)
 
         # Botão de atualizar config
         refresh_btn = ctk.CTkButton(
@@ -412,6 +424,15 @@ class MainWindow(ctk.CTk):
         """Abre visualizador de logs"""
         dialog = LogViewerDialog(self)
         dialog.grab_set()
+
+    def _on_agendas_click(self):
+        """Abre visualizador de agendas"""
+        agendas = self.controller.get_all_agendas()
+        if agendas:
+            dialog = AgendaListDialog(self, agendas)
+            dialog.grab_set()
+        else:
+            show_warning(self, "Agendas", "Nenhuma agenda de backup encontrada")
 
     def _on_refresh_click(self):
         """Atualiza configurações"""

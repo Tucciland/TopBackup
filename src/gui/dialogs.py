@@ -191,6 +191,102 @@ class LogViewerDialog(ctk.CTkToplevel):
         self.log_text.configure(state="disabled")
 
 
+class AgendaListDialog(ctk.CTkToplevel):
+    """Diálogo para visualização das agendas de backup"""
+
+    def __init__(self, parent, agendas: list):
+        super().__init__(parent)
+
+        self.agendas = agendas
+
+        self.title("Agendamentos de Backup")
+        self.geometry("750x450")
+
+        # Centraliza
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() - 750) // 2
+        y = (self.winfo_screenheight() - 450) // 2
+        self.geometry(f"+{x}+{y}")
+
+        self._create_widgets()
+
+    def _create_widgets(self):
+        """Cria widgets"""
+        # Frame principal
+        main = ctk.CTkFrame(self)
+        main.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Título
+        ctk.CTkLabel(
+            main,
+            text=f"Total de agendamentos: {len(self.agendas)}",
+            font=ctk.CTkFont(size=14, weight="bold")
+        ).pack(anchor="w", padx=10, pady=5)
+
+        # Frame scrollável para a lista
+        scroll_frame = ctk.CTkScrollableFrame(main, height=350)
+        scroll_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        # Cabeçalho
+        header = ctk.CTkFrame(scroll_frame, fg_color="gray25")
+        header.pack(fill="x", pady=(0, 5))
+
+        headers = ["Horário", "Dias", "Destino 1", "Tipo"]
+        widths = [80, 180, 350, 60]
+        for i, (text, width) in enumerate(zip(headers, widths)):
+            ctk.CTkLabel(
+                header,
+                text=text,
+                width=width,
+                font=ctk.CTkFont(weight="bold")
+            ).pack(side="left", padx=2)
+
+        # Linhas de dados
+        for agenda in self.agendas:
+            self._create_agenda_row(scroll_frame, agenda)
+
+        # Botão fechar
+        ctk.CTkButton(
+            main,
+            text="Fechar",
+            command=self.destroy,
+            width=100
+        ).pack(pady=10)
+
+    def _create_agenda_row(self, parent, agenda):
+        """Cria uma linha para cada agenda"""
+        row = ctk.CTkFrame(parent, fg_color="gray20", corner_radius=5)
+        row.pack(fill="x", pady=2)
+
+        # Horário
+        hora, minuto = agenda.get_hora_minuto()
+        horario_str = f"{hora:02d}:{minuto:02d}"
+        ctk.CTkLabel(row, text=horario_str, width=80).pack(side="left", padx=2)
+
+        # Dias da semana
+        dias = []
+        if agenda.dom == 'S': dias.append("Dom")
+        if agenda.seg == 'S': dias.append("Seg")
+        if agenda.ter == 'S': dias.append("Ter")
+        if agenda.qua == 'S': dias.append("Qua")
+        if agenda.qui == 'S': dias.append("Qui")
+        if agenda.sex == 'S': dias.append("Sex")
+        if agenda.sab == 'S': dias.append("Sab")
+        dias_str = ", ".join(dias) if dias else "Nenhum"
+        ctk.CTkLabel(row, text=dias_str, width=180).pack(side="left", padx=2)
+
+        # Destino 1
+        destino = agenda.local_destino1 or "-"
+        if len(destino) > 45:
+            destino = "..." + destino[-42:]
+        ctk.CTkLabel(row, text=destino, width=350, anchor="w").pack(side="left", padx=2)
+
+        # Tipo de backup
+        tipos = {'V': 'Data/Hora', 'S': 'Semanal', 'U': 'Único'}
+        tipo_str = tipos.get(agenda.prefixo_backup, agenda.prefixo_backup)
+        ctk.CTkLabel(row, text=tipo_str, width=60).pack(side="left", padx=2)
+
+
 class SettingsDialog(ctk.CTkToplevel):
     """Diálogo de configurações"""
 

@@ -327,6 +327,12 @@ class AppController:
         """Retorna agenda de backup"""
         return self._agenda
 
+    def get_all_agendas(self) -> List[AgendaBackup]:
+        """Retorna todas as agendas de backup do Firebird"""
+        if self._firebird:
+            return self._firebird.get_all_agendas()
+        return []
+
     def get_last_backup_result(self) -> Optional[BackupResult]:
         """Retorna resultado do último backup"""
         return self._last_backup_result
