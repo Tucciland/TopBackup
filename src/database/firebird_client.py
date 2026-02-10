@@ -73,17 +73,15 @@ class FirebirdClient:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
 
-                # Tenta buscar campos comuns em sistemas ERP
-                # Adapte os nomes das colunas conforme seu banco
+                # Busca dados da empresa do banco Firebird local
                 sql = """
                     SELECT FIRST 1
-                        ID,
+                        CODIGO,
                         FANTASIA,
                         RAZAO,
                         CNPJ,
-                        DATA_ABERTURA
+                        DATA_CADASTRO
                     FROM EMPRESA
-                    WHERE ATIVO = 'S'
                 """
 
                 try:
@@ -128,19 +126,21 @@ class FirebirdClient:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
 
-                # Tenta buscar na tabela AGENDA_BACKUP
+                # Busca na tabela AGENDA_BACKUP
+                # PREFIXO_BACKUP: 'V' = Versionado (CNPJ_ANO_MES_DIA_HORA)
+                #                 'S' = Semanal (CNPJ_DIA_DA_SEMANA)
+                #                 'U' = Unico (CNPJ)
                 sql = """
-                    SELECT FIRST 1
+                    SELECT
                         ID,
                         HORARIO,
                         DOM, SEG, TER, QUA, QUI, SEX, SAB,
                         LOCAL_DESTINO1,
                         LOCAL_DESTINO2,
                         BACKUP_REMOTO,
-                        PREFIXO_ARQUIVO,
-                        ATIVO
+                        PREFIXO_BACKUP,
+                        BANCO_ORIGEM
                     FROM AGENDA_BACKUP
-                    WHERE ATIVO = 'S'
                     ORDER BY ID
                 """
 
@@ -178,8 +178,8 @@ class FirebirdClient:
                         local_destino1=row[9] or "",
                         local_destino2=row[10],
                         backup_remoto=row[11] or 'N',
-                        prefixo_arquivo=row[12] or 'V',
-                        ativo=row[13] or 'S'
+                        prefixo_backup=row[12] or 'V',
+                        banco_origem=row[13] or ""
                     )
 
                 return None
@@ -224,8 +224,8 @@ class FirebirdClient:
 
                 sql = """
                     UPDATE EMPRESA
-                    SET DATA_ABERTURA = CURRENT_TIMESTAMP
-                    WHERE ID = (SELECT FIRST 1 ID FROM EMPRESA)
+                    SET DATA_CADASTRO = CURRENT_TIMESTAMP
+                    WHERE CODIGO = (SELECT FIRST 1 CODIGO FROM EMPRESA)
                 """
 
                 try:

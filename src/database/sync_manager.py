@@ -89,7 +89,7 @@ class SyncManager:
             self.settings.backup.local_destino1 = self._agenda.local_destino1
             self.settings.backup.local_destino2 = self._agenda.local_destino2 or ""
             self.settings.backup.backup_remoto = self._agenda.backup_remoto == 'S'
-            self.settings.backup.prefixo_arquivo = self._agenda.prefixo_arquivo
+            self.settings.backup.prefixo_backup = self._agenda.prefixo_backup
 
             self.settings.save()
 

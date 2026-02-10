@@ -93,7 +93,7 @@ class BackupEngine:
         log = LogBackup(
             id_empresa=self.settings.app.empresa_id or 0,
             data_inicio=inicio,
-            tipo_backup=agenda.prefixo_arquivo,
+            tipo_backup=agenda.prefixo_backup,
             status=STATUS_EXECUTANDO
         )
 
@@ -303,7 +303,7 @@ class BackupEngine:
         # Gera nome do arquivo
         zip_filename = FileUtils.generate_backup_filename(
             empresa.cnpj,
-            agenda.prefixo_arquivo,
+            agenda.prefixo_backup,
             ZIP_EXTENSION
         )
 
@@ -343,7 +343,7 @@ class BackupEngine:
         if not source_path.endswith(ZIP_EXTENSION):
             filename = FileUtils.generate_backup_filename(
                 empresa.cnpj,
-                agenda.prefixo_arquivo,
+                agenda.prefixo_backup,
                 BACKUP_EXTENSION
             )
         else:

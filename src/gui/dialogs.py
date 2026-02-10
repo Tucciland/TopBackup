@@ -384,7 +384,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.dest2_entry.insert(0, self.settings.backup.local_destino2)
         self.zip_var.set(self.settings.backup.compactar_zip)
         self.verify_var.set(self.settings.backup.verificar_backup)
-        self.prefix_var.set(self.settings.backup.prefixo_arquivo)
+        self.prefix_var.set(self.settings.backup.prefixo_backup)
 
         # Conexões
         self.fb_db_entry.insert(0, self.settings.firebird.database_path)
@@ -402,7 +402,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings.backup.local_destino2 = self.dest2_entry.get()
         self.settings.backup.compactar_zip = self.zip_var.get()
         self.settings.backup.verificar_backup = self.verify_var.get()
-        self.settings.backup.prefixo_arquivo = self.prefix_var.get()
+        self.settings.backup.prefixo_backup = self.prefix_var.get()
 
         # Conexões
         self.settings.firebird.database_path = self.fb_db_entry.get()

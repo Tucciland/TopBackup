@@ -60,7 +60,13 @@ class Empresa:
 
 @dataclass
 class AgendaBackup:
-    """Representa uma agenda de backup do Firebird"""
+    """Representa uma agenda de backup do Firebird
+
+    prefixo_backup indica o padrão de nomenclatura do arquivo:
+        'V' = Versionado: CNPJ_YYYYMMDD_HHMMSS.zip (várias versões por data/hora)
+        'S' = Semanal: CNPJ_SEG.zip (controle semanal, dia da semana)
+        'U' = Unico: CNPJ.zip (arquivo único, sempre sobrescrito)
+    """
     id: Optional[int] = None
     id_empresa: Optional[int] = None
     horario: str = "23:00"
@@ -74,8 +80,8 @@ class AgendaBackup:
     local_destino1: str = ""
     local_destino2: Optional[str] = None
     backup_remoto: str = 'N'
-    prefixo_arquivo: str = 'V'
-    ativo: str = 'S'
+    prefixo_backup: str = 'V'
+    banco_origem: str = ""
 
     def get_dias_ativos(self) -> list:
         """Retorna lista de dias da semana ativos"""

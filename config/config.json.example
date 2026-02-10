@@ -33,7 +33,7 @@
         "local_destino1": "C:\\Backups",
         "local_destino2": "",
         "backup_remoto": false,
-        "prefixo_arquivo": "V",
+        "prefixo_backup": "V",
         "compactar_zip": true,
         "verificar_backup": true
     }

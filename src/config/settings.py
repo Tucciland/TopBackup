@@ -58,7 +58,7 @@ class BackupConfig:
     local_destino1: str = ""
     local_destino2: str = ""
     backup_remoto: bool = False
-    prefixo_arquivo: str = "V"  # V, S, U
+    prefixo_backup: str = "V"  # V=Versionado, S=Semanal, U=Unico
     compactar_zip: bool = True
     verificar_backup: bool = True
 
