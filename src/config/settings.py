@@ -79,8 +79,10 @@ class Settings:
         """Retorna o caminho do arquivo de configuração"""
         # Verifica se está rodando como executável empacotado
         if getattr(os.sys, 'frozen', False):
-            base_path = Path(os.sys.executable).parent
+            # Executável - sempre usa C:\TOPBACKUP
+            base_path = Path(r"C:\TOPBACKUP")
         else:
+            # Desenvolvimento
             base_path = Path(__file__).parent.parent.parent
 
         return base_path / "config" / "config.json"

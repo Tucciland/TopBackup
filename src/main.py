@@ -9,13 +9,16 @@ import argparse
 import ctypes
 from pathlib import Path
 
-# Adiciona diretório src ao path
+# Adiciona diretório src ao path ANTES de qualquer import do projeto
 if getattr(sys, 'frozen', False):
-    # Executando como executável
-    BASE_DIR = Path(sys.executable).parent
+    # Executando como executável - usa _MEIPASS para imports
+    BASE_DIR = Path(sys._MEIPASS)
+    # Diretório de instalação real
+    INSTALL_DIR = Path(r"C:\TOPBACKUP")
 else:
     # Executando como script Python
     BASE_DIR = Path(__file__).parent.parent
+    INSTALL_DIR = BASE_DIR
 
 sys.path.insert(0, str(BASE_DIR))
 
@@ -29,7 +32,7 @@ def initialize_firebird_library():
         arch = get_python_architecture()
         print(f"AVISO: {message}")
         print(f"\nPara resolver, copie o fbclient.dll ({arch}-bit) para:")
-        print(f"  {BASE_DIR / 'assets' / 'firebird' / ('x64' if arch == 64 else 'x86')}")
+        print(f"  {INSTALL_DIR / 'assets' / 'firebird' / ('x64' if arch == 64 else 'x86')}")
         print("\nO fbclient.dll pode ser encontrado na instalação do Firebird:")
         if arch == 64:
             print("  C:\\Program Files\\Firebird\\Firebird_2_5\\bin\\fbclient.dll (64-bit)")
@@ -121,7 +124,10 @@ def run_gui():
     window = MainWindow(controller, settings)
 
     # Configura System Tray
-    icon_path = BASE_DIR / "assets" / "icon.ico"
+    # Tenta primeiro no diretório de instalação, depois nos embutidos
+    icon_path = INSTALL_DIR / "assets" / "icon.ico"
+    if not icon_path.exists():
+        icon_path = BASE_DIR / "assets" / "icon.ico"
     if icon_path.exists():
         window.setup_tray(str(icon_path))
 
@@ -245,9 +251,34 @@ def run_backup_now():
     controller.stop()
 
 
+def ensure_installation():
+    """
+    Verifica se o app está instalado em C:\TOPBACKUP.
+    Se não estiver, instala e reinicia.
+    """
+    if not getattr(sys, 'frozen', False):
+        # Em desenvolvimento, não instala
+        return False
+
+    from src.core.installer import ensure_installed, show_permission_error
+
+    needs_exit, message = ensure_installed()
+
+    if needs_exit:
+        if "permissão" in message.lower() or "permission" in message.lower():
+            show_permission_error()
+        # App foi instalado e nova instância foi iniciada
+        sys.exit(0)
+
+    return False
+
+
 def main():
     """Função principal"""
-    # Inicializa Firebird ANTES de qualquer import que use fdb
+    # 1. Garante instalação em C:\TOPBACKUP (se executável)
+    ensure_installation()
+
+    # 2. Inicializa Firebird ANTES de qualquer import que use fdb
     initialize_firebird_library()
 
     parser = argparse.ArgumentParser(

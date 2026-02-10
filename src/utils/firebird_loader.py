@@ -18,34 +18,50 @@ def get_python_architecture() -> int:
 def get_base_dir() -> Path:
     """Retorna o diretório base do aplicativo"""
     if getattr(sys, 'frozen', False):
-        # Executando como executável PyInstaller
-        return Path(sys.executable).parent
+        # Executável - sempre usa C:\TOPBACKUP (onde os assets são instalados)
+        return Path(r"C:\TOPBACKUP")
     else:
         # Executando como script Python
+        return Path(__file__).parent.parent.parent
+
+
+def get_embedded_dir() -> Path:
+    """Retorna o diretório dos arquivos embutidos no executável"""
+    if getattr(sys, 'frozen', False):
+        # Arquivos embutidos estão em _MEIPASS
+        return Path(sys._MEIPASS)
+    else:
         return Path(__file__).parent.parent.parent
 
 
 def find_fbclient_dll() -> Optional[str]:
     """
     Procura o fbclient.dll na seguinte ordem:
-    1. Pasta assets/firebird/x64 ou x86 (embutido no app)
-    2. Variável de ambiente FIREBIRD
-    3. Instalação padrão do Firebird
-    4. PATH do sistema
+    1. Arquivos embutidos no executável (_MEIPASS)
+    2. Pasta de instalação (C:\TOPBACKUP\assets)
+    3. Variável de ambiente FIREBIRD
+    4. Instalação padrão do Firebird
+    5. PATH do sistema
 
     Returns:
         Caminho para o fbclient.dll ou None se não encontrado
     """
     arch = get_python_architecture()
     arch_folder = "x64" if arch == 64 else "x86"
-    base_dir = get_base_dir()
 
     # Lista de locais para procurar
     search_paths = []
 
-    # 1. Pasta embutida no aplicativo (prioridade máxima)
-    embedded_path = base_dir / "assets" / "firebird" / arch_folder / "fbclient.dll"
-    search_paths.append(embedded_path)
+    # 1. Arquivos embutidos no executável (para primeira execução antes de instalar)
+    if getattr(sys, 'frozen', False):
+        embedded_dir = get_embedded_dir()
+        embedded_path = embedded_dir / "assets" / "firebird" / arch_folder / "fbclient.dll"
+        search_paths.append(embedded_path)
+
+    # 2. Pasta de instalação (C:\TOPBACKUP ou diretório de desenvolvimento)
+    base_dir = get_base_dir()
+    installed_path = base_dir / "assets" / "firebird" / arch_folder / "fbclient.dll"
+    search_paths.append(installed_path)
 
     # 2. Variável de ambiente FIREBIRD
     firebird_env = os.environ.get('FIREBIRD')
@@ -132,6 +148,7 @@ def get_embedded_dll_path() -> Path:
     """Retorna o caminho onde a DLL embutida deveria estar"""
     arch = get_python_architecture()
     arch_folder = "x64" if arch == 64 else "x86"
+    # Usa diretório de instalação (C:\TOPBACKUP)
     base_dir = get_base_dir()
     return base_dir / "assets" / "firebird" / arch_folder / "fbclient.dll"
 

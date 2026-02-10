@@ -30,8 +30,10 @@ class Logger:
 
         # Define o diretório de logs
         if getattr(os.sys, 'frozen', False):
-            base_path = Path(os.sys.executable).parent
+            # Executável - sempre usa C:\TOPBACKUP
+            base_path = Path(r"C:\TOPBACKUP")
         else:
+            # Desenvolvimento
             base_path = Path(__file__).parent.parent.parent
 
         self.log_dir = base_path / "logs"
