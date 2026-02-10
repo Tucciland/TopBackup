@@ -377,6 +377,8 @@ class AppController:
         self.settings = Settings.load()
 
         if self._sync_manager:
+            # Atualiza referência de settings no sync_manager
+            self._sync_manager.settings = self.settings
             self._sync_manager.refresh()
 
             # Força atualização dos destinos do Firebird
@@ -391,8 +393,12 @@ class AppController:
                     self.logger.info(f"  Destino 1: {agenda_fb.local_destino1}")
                     self.logger.info(f"  Destino 2: {agenda_fb.local_destino2}")
 
-            self._sync_manager.full_sync()
-            self._agenda = self._sync_manager.get_agenda()
+                    # Atualiza agenda local sem chamar sync_agenda (que sobrescreveria)
+                    self._agenda = agenda_fb
+            else:
+                # Só faz full_sync se não forçou do Firebird
+                self._sync_manager.full_sync()
+                self._agenda = self._sync_manager.get_agenda()
 
             if self._scheduler and self._firebird:
                 all_agendas = self._firebird.get_all_agendas()
