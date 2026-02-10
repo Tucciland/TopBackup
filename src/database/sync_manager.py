@@ -47,8 +47,8 @@ class SyncManager:
             versao = self.firebird.get_versao_sistema()
             self._empresa_local.versao_local = versao
 
-            # Atualiza data de abertura
-            self._empresa_local.data_ultima_abertura = datetime.now()
+            # Atualiza data de interação
+            self._empresa_local.data_ultima_interacao = datetime.now()
 
             # Sincroniza com MySQL (insert ou update)
             id_empresa = self.mysql.sync_empresa(self._empresa_local)

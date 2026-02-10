@@ -13,16 +13,15 @@ USE PROJETO_BACKUPS;
 -- Armazena informações das empresas clientes
 -- ============================================
 CREATE TABLE IF NOT EXISTS EMPRESA (
-    ID                    INT AUTO_INCREMENT PRIMARY KEY,
-    ID_AUX                INT,                                  -- ID do sistema local
-    FANTASIA              VARCHAR(60) NOT NULL,
-    RAZAO                 VARCHAR(60) NOT NULL,
-    CNPJ                  VARCHAR(18) NOT NULL UNIQUE,          -- UNIQUE evita duplicatas
-    DATA_ULTIMA_ABERTURA  DATETIME,
-    VERSAO_LOCAL          VARCHAR(20),                          -- "1.0.5" formato string
-    DATA_CADASTRO         DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ATIVO                 CHAR(1) DEFAULT 'S',
-    ULTIMO_CONTATO        DATETIME,                             -- Heartbeat
+    ID                      INT AUTO_INCREMENT PRIMARY KEY,
+    ID_AUX                  INT,                                  -- ID do sistema local
+    FANTASIA                VARCHAR(60) NOT NULL,
+    RAZAO                   VARCHAR(60) NOT NULL,
+    CNPJ                    VARCHAR(18) NOT NULL UNIQUE,          -- UNIQUE evita duplicatas
+    DATA_ULTIMA_INTERACAO   DATETIME,                             -- Atualizado na abertura do app e após backup
+    VERSAO_LOCAL            VARCHAR(20),                          -- "1.0.5" formato string
+    DATA_CADASTRO           DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ATIVO                   CHAR(1) DEFAULT 'S',
     INDEX idx_cnpj (CNPJ),
     INDEX idx_ativo (ATIVO)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -67,22 +66,6 @@ CREATE TABLE IF NOT EXISTS VERSAO_APP (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- Tabela HEARTBEAT
--- Monitoramento de status das instalações
--- ============================================
-CREATE TABLE IF NOT EXISTS HEARTBEAT (
-    ID              INT AUTO_INCREMENT PRIMARY KEY,
-    ID_EMPRESA      INT NOT NULL,
-    DATA_HORA       DATETIME DEFAULT CURRENT_TIMESTAMP,
-    VERSAO_APP      VARCHAR(20),
-    HOSTNAME        VARCHAR(100),
-    IP_PUBLICO      VARCHAR(45),
-    STATUS_SERVICO  VARCHAR(20),
-    FOREIGN KEY (ID_EMPRESA) REFERENCES EMPRESA(ID) ON DELETE CASCADE,
-    INDEX idx_empresa_data (ID_EMPRESA, DATA_HORA)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ============================================
 -- Inserir versão inicial do aplicativo
 -- ============================================
 INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
@@ -118,32 +101,21 @@ SELECT
     e.FANTASIA,
     e.CNPJ,
     e.ATIVO,
-    e.ULTIMO_CONTATO,
+    e.DATA_ULTIMA_INTERACAO,
     e.VERSAO_LOCAL,
-    TIMESTAMPDIFF(MINUTE, e.ULTIMO_CONTATO, NOW()) AS MINUTOS_SEM_CONTATO,
+    TIMESTAMPDIFF(HOUR, e.DATA_ULTIMA_INTERACAO, NOW()) AS HORAS_SEM_INTERACAO,
     CASE
-        WHEN TIMESTAMPDIFF(MINUTE, e.ULTIMO_CONTATO, NOW()) <= 10 THEN 'ONLINE'
-        WHEN TIMESTAMPDIFF(MINUTE, e.ULTIMO_CONTATO, NOW()) <= 60 THEN 'ATENCAO'
-        ELSE 'OFFLINE'
+        WHEN TIMESTAMPDIFF(HOUR, e.DATA_ULTIMA_INTERACAO, NOW()) <= 24 THEN 'OK'
+        WHEN TIMESTAMPDIFF(HOUR, e.DATA_ULTIMA_INTERACAO, NOW()) <= 48 THEN 'ATENCAO'
+        ELSE 'VERIFICAR'
     END AS STATUS_CONEXAO
 FROM EMPRESA e
 WHERE e.ATIVO = 'S'
-ORDER BY e.ULTIMO_CONTATO DESC;
+ORDER BY e.DATA_ULTIMA_INTERACAO DESC;
 
 -- ============================================
 -- Stored Procedures
 -- ============================================
-
--- Procedure: Limpar heartbeats antigos (manter últimos 30 dias)
-DELIMITER //
-CREATE PROCEDURE IF NOT EXISTS sp_limpar_heartbeats_antigos()
-BEGIN
-    DELETE FROM HEARTBEAT
-    WHERE DATA_HORA < DATE_SUB(NOW(), INTERVAL 30 DAY);
-
-    SELECT ROW_COUNT() AS REGISTROS_REMOVIDOS;
-END //
-DELIMITER ;
 
 -- Procedure: Relatório de backups do mês
 DELIMITER //
@@ -171,7 +143,6 @@ DELIMITER ;
 -- Índices adicionais para performance
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_log_empresa_status ON LOG_BACKUPS(ID_EMPRESA, STATUS);
-CREATE INDEX IF NOT EXISTS idx_heartbeat_data ON HEARTBEAT(DATA_HORA);
 
 -- ============================================
 -- Fim do script

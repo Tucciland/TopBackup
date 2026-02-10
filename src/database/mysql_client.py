@@ -9,7 +9,7 @@ from typing import Optional, List, Tuple
 from contextlib import contextmanager
 from datetime import datetime
 
-from .models import Empresa, LogBackup, VersaoApp, Heartbeat
+from .models import Empresa, LogBackup, VersaoApp
 from ..config.settings import MySQLConfig
 from ..utils.logger import get_logger
 from ..utils.resilience import retry
@@ -77,8 +77,8 @@ class MySQLClient:
                 cursor = conn.cursor(dictionary=True)
                 sql = """
                     SELECT ID, ID_AUX, FANTASIA, RAZAO, CNPJ,
-                           DATA_ULTIMA_ABERTURA, VERSAO_LOCAL,
-                           DATA_CADASTRO, ATIVO, ULTIMO_CONTATO
+                           DATA_ULTIMA_INTERACAO, VERSAO_LOCAL,
+                           DATA_CADASTRO, ATIVO
                     FROM EMPRESA
                     WHERE CNPJ = %s
                 """
@@ -92,11 +92,10 @@ class MySQLClient:
                         fantasia=row['FANTASIA'],
                         razao=row['RAZAO'],
                         cnpj=row['CNPJ'],
-                        data_ultima_abertura=row['DATA_ULTIMA_ABERTURA'],
+                        data_ultima_interacao=row['DATA_ULTIMA_INTERACAO'],
                         versao_local=row['VERSAO_LOCAL'],
                         data_cadastro=row['DATA_CADASTRO'],
-                        ativo=row['ATIVO'],
-                        ultimo_contato=row['ULTIMO_CONTATO']
+                        ativo=row['ATIVO']
                     )
                 return None
 
@@ -111,19 +110,18 @@ class MySQLClient:
                 cursor = conn.cursor()
                 sql = """
                     INSERT INTO EMPRESA
-                    (ID_AUX, FANTASIA, RAZAO, CNPJ, DATA_ULTIMA_ABERTURA,
-                     VERSAO_LOCAL, ATIVO, ULTIMO_CONTATO)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    (ID_AUX, FANTASIA, RAZAO, CNPJ, DATA_ULTIMA_INTERACAO,
+                     VERSAO_LOCAL, ATIVO)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(sql, (
                     empresa.id_aux,
                     empresa.fantasia,
                     empresa.razao,
                     empresa.cnpj,
-                    empresa.data_ultima_abertura,
+                    datetime.now(),
                     empresa.versao_local,
-                    empresa.ativo,
-                    datetime.now()
+                    empresa.ativo
                 ))
                 conn.commit()
                 return cursor.lastrowid
@@ -142,20 +140,18 @@ class MySQLClient:
                         ID_AUX = %s,
                         FANTASIA = %s,
                         RAZAO = %s,
-                        DATA_ULTIMA_ABERTURA = %s,
+                        DATA_ULTIMA_INTERACAO = %s,
                         VERSAO_LOCAL = %s,
-                        ATIVO = %s,
-                        ULTIMO_CONTATO = %s
+                        ATIVO = %s
                     WHERE ID = %s
                 """
                 cursor.execute(sql, (
                     empresa.id_aux,
                     empresa.fantasia,
                     empresa.razao,
-                    empresa.data_ultima_abertura,
+                    datetime.now(),
                     empresa.versao_local,
                     empresa.ativo,
-                    datetime.now(),
                     empresa.id
                 ))
                 conn.commit()
@@ -320,47 +316,22 @@ class MySQLClient:
             self.logger.error(f"Erro ao buscar versão: {e}")
             return None
 
-    # ============ HEARTBEAT ============
+    # ============ INTERAÇÃO ============
 
-    def insert_heartbeat(self, heartbeat: Heartbeat) -> Optional[int]:
-        """Insere heartbeat de monitoramento"""
+    def update_empresa_interacao(self, id_empresa: int) -> bool:
+        """Atualiza última interação da empresa (abertura do app ou backup)"""
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 sql = """
-                    INSERT INTO HEARTBEAT
-                    (ID_EMPRESA, DATA_HORA, VERSAO_APP, HOSTNAME, IP_PUBLICO, STATUS_SERVICO)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """
-                cursor.execute(sql, (
-                    heartbeat.id_empresa,
-                    heartbeat.data_hora,
-                    heartbeat.versao_app,
-                    heartbeat.hostname,
-                    heartbeat.ip_publico,
-                    heartbeat.status_servico
-                ))
-                conn.commit()
-                return cursor.lastrowid
-
-        except Exception as e:
-            self.logger.error(f"Erro ao inserir heartbeat: {e}")
-            return None
-
-    def update_empresa_contato(self, id_empresa: int) -> bool:
-        """Atualiza último contato da empresa"""
-        try:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                sql = """
-                    UPDATE EMPRESA SET ULTIMO_CONTATO = %s WHERE ID = %s
+                    UPDATE EMPRESA SET DATA_ULTIMA_INTERACAO = %s WHERE ID = %s
                 """
                 cursor.execute(sql, (datetime.now(), id_empresa))
                 conn.commit()
                 return True
 
         except Exception as e:
-            self.logger.error(f"Erro ao atualizar contato: {e}")
+            self.logger.error(f"Erro ao atualizar interação: {e}")
             return False
 
     # ============ SCHEMA ============
@@ -387,6 +358,38 @@ class MySQLClient:
                     """)
                     conn.commit()
                     self.logger.info("Coluna MANUAL adicionada à tabela LOG_BACKUPS")
+
+                # Migração: Renomeia DATA_ULTIMA_ABERTURA para DATA_ULTIMA_INTERACAO
+                cursor.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = %s
+                    AND TABLE_NAME = 'EMPRESA'
+                    AND COLUMN_NAME = 'DATA_ULTIMA_ABERTURA'
+                """, (self.config.database,))
+
+                if cursor.fetchone()[0] > 0:
+                    cursor.execute("""
+                        ALTER TABLE EMPRESA
+                        CHANGE DATA_ULTIMA_ABERTURA DATA_ULTIMA_INTERACAO DATETIME
+                    """)
+                    conn.commit()
+                    self.logger.info("Coluna DATA_ULTIMA_ABERTURA renomeada para DATA_ULTIMA_INTERACAO")
+
+                # Migração: Remove coluna ULTIMO_CONTATO (obsoleta)
+                cursor.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = %s
+                    AND TABLE_NAME = 'EMPRESA'
+                    AND COLUMN_NAME = 'ULTIMO_CONTATO'
+                """, (self.config.database,))
+
+                if cursor.fetchone()[0] > 0:
+                    cursor.execute("""
+                        ALTER TABLE EMPRESA
+                        DROP COLUMN ULTIMO_CONTATO
+                    """)
+                    conn.commit()
+                    self.logger.info("Coluna ULTIMO_CONTATO removida da tabela EMPRESA")
 
         except Exception as e:
             self.logger.warning(f"Erro ao verificar schema: {e}")

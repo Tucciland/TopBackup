@@ -10,7 +10,6 @@ from enum import Enum
 
 from .backup_engine import BackupEngine, BackupResult
 from .scheduler import BackupScheduler
-from .heartbeat import HeartbeatManager
 from ..config.settings import Settings
 from ..database.firebird_client import FirebirdClient
 from ..database.mysql_client import MySQLClient
@@ -54,7 +53,6 @@ class AppController:
         self._sync_manager: Optional[SyncManager] = None
         self._backup_engine: Optional[BackupEngine] = None
         self._scheduler: Optional[BackupScheduler] = None
-        self._heartbeat: Optional[HeartbeatManager] = None
         self._ftp_client: Optional[FTPClient] = None
         self._update_checker: Optional[UpdateChecker] = None
 
@@ -147,7 +145,6 @@ class AppController:
             self._scheduler = BackupScheduler(self.settings)
             self._scheduler.set_backup_callback(self._on_scheduled_backup)
             self._scheduler.set_sync_callback(self._on_sync_schedule)
-            self._scheduler.set_heartbeat_callback(self._on_heartbeat_schedule)
             self._scheduler.set_update_callback(self._on_update_schedule)
 
             # Configura TODAS as agendas de backup
@@ -159,9 +156,6 @@ class AppController:
 
             # Configura jobs do sistema
             self._scheduler.configure_system_jobs()
-
-            # Inicializa Heartbeat
-            self._heartbeat = HeartbeatManager(self.settings, self._mysql)
 
             # Inicializa FTP (se configurado)
             if self.settings.backup.backup_remoto and self.settings.ftp.host:
@@ -184,9 +178,9 @@ class AppController:
         if self._scheduler:
             self._scheduler.start()
 
-        # Envia heartbeat inicial
-        if self._heartbeat:
-            self._heartbeat.send_heartbeat("running")
+        # Atualiza interação no início (substitui heartbeat)
+        if self._mysql and self.settings.app.empresa_id:
+            self._mysql.update_empresa_interacao(self.settings.app.empresa_id)
 
         self._set_state(AppState.RUNNING)
         self.logger.info("Aplicativo iniciado")
@@ -195,9 +189,6 @@ class AppController:
         """Para o aplicativo"""
         if self._scheduler:
             self._scheduler.stop()
-
-        if self._heartbeat:
-            self._heartbeat.send_heartbeat("stopped")
 
         self._set_state(AppState.STOPPED)
         self.logger.info("Aplicativo parado")
@@ -244,6 +235,10 @@ class AppController:
             )
 
             self._last_backup_result = result
+
+            # Atualiza interação após backup
+            if result.success and self._mysql and self.settings.app.empresa_id:
+                self._mysql.update_empresa_interacao(self.settings.app.empresa_id)
 
             # Upload FTP se configurado
             if result.success and self.settings.backup.backup_remoto:
@@ -302,12 +297,6 @@ class AppController:
                     self._scheduler.configure_from_agendas(all_agendas)
                 elif self._agenda:
                     self._scheduler.configure_from_agenda(self._agenda)
-
-    def _on_heartbeat_schedule(self):
-        """Callback para heartbeat"""
-        if self._heartbeat:
-            status = "running" if self._state == AppState.RUNNING else str(self._state.value)
-            self._heartbeat.send_heartbeat(status)
 
     def _on_update_schedule(self):
         """Callback para verificação de updates"""

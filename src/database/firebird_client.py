@@ -107,7 +107,7 @@ class FirebirdClient:
                         fantasia=row[1] or "",
                         razao=row[2] or "",
                         cnpj=row[3] or "",
-                        data_ultima_abertura=row[4]
+                        data_cadastro=row[4]
                     )
 
                 return None

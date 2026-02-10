@@ -43,11 +43,10 @@ class Empresa:
     fantasia: str = ""
     razao: str = ""
     cnpj: str = ""
-    data_ultima_abertura: Optional[datetime] = None
+    data_ultima_interacao: Optional[datetime] = None
     versao_local: Optional[str] = None
     data_cadastro: Optional[datetime] = None
     ativo: str = 'S'
-    ultimo_contato: Optional[datetime] = None
 
     def cnpj_limpo(self) -> str:
         """Retorna CNPJ apenas com números"""
@@ -186,13 +185,3 @@ class VersaoApp:
         return self.obrigatoria == 'S'
 
 
-@dataclass
-class Heartbeat:
-    """Representa um heartbeat de monitoramento"""
-    id: Optional[int] = None
-    id_empresa: int = 0
-    data_hora: datetime = field(default_factory=datetime.now)
-    versao_app: Optional[str] = None
-    hostname: Optional[str] = None
-    ip_publico: Optional[str] = None
-    status_servico: Optional[str] = None

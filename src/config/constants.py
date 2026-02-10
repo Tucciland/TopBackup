@@ -3,7 +3,6 @@ TopBackup - Constantes do Sistema
 """
 
 # Intervalos de tempo (em segundos)
-HEARTBEAT_INTERVAL = 300  # 5 minutos
 CONFIG_SYNC_INTERVAL = 1800  # 30 minutos
 UPDATE_CHECK_INTERVAL = 21600  # 6 horas
 

@@ -12,7 +12,7 @@ from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, JobExecution
 
 from ..database.models import AgendaBackup
 from ..config.settings import Settings
-from ..config.constants import CONFIG_SYNC_INTERVAL, HEARTBEAT_INTERVAL, UPDATE_CHECK_INTERVAL
+from ..config.constants import CONFIG_SYNC_INTERVAL, UPDATE_CHECK_INTERVAL
 from ..utils.logger import get_logger
 
 
@@ -36,7 +36,6 @@ class BackupScheduler:
         # Callbacks
         self._backup_callback: Optional[Callable] = None
         self._sync_callback: Optional[Callable] = None
-        self._heartbeat_callback: Optional[Callable] = None
         self._update_callback: Optional[Callable] = None
 
         # Estado
@@ -50,10 +49,6 @@ class BackupScheduler:
     def set_sync_callback(self, callback: Callable):
         """Define callback para sincronização"""
         self._sync_callback = callback
-
-    def set_heartbeat_callback(self, callback: Callable):
-        """Define callback para heartbeat"""
-        self._heartbeat_callback = callback
 
     def set_update_callback(self, callback: Callable):
         """Define callback para verificação de updates"""
@@ -134,7 +129,7 @@ class BackupScheduler:
         return ','.join(dias)
 
     def configure_system_jobs(self):
-        """Configura jobs do sistema (sync, heartbeat, update)"""
+        """Configura jobs do sistema (sync, update)"""
         # Job de sincronização com Firebird (a cada 30min)
         if self._sync_callback:
             self.scheduler.add_job(
@@ -142,16 +137,6 @@ class BackupScheduler:
                 trigger=IntervalTrigger(seconds=CONFIG_SYNC_INTERVAL),
                 id='sync_job',
                 name='Sincronização Config',
-                replace_existing=True
-            )
-
-        # Job de heartbeat (a cada 5min)
-        if self._heartbeat_callback:
-            self.scheduler.add_job(
-                func=self._heartbeat_callback,
-                trigger=IntervalTrigger(seconds=HEARTBEAT_INTERVAL),
-                id='heartbeat_job',
-                name='Heartbeat',
                 replace_existing=True
             )
 

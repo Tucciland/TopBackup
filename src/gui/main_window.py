@@ -135,68 +135,78 @@ class MainWindow(ctk.CTk):
         self.status_text.pack(side="right", padx=5)
 
     def _create_status_area(self):
-        """Cria área de status"""
-        status_frame = ctk.CTkFrame(self.main_frame)
-        status_frame.pack(fill="x", pady=10)
+        """Cria área de status com 2 blocos lado a lado"""
+        # Container principal para os 2 blocos
+        container = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        container.pack(fill="x", pady=10)
+        container.columnconfigure(0, weight=1)
+        container.columnconfigure(1, weight=1)
 
-        # Grid para informações
-        status_frame.columnconfigure(1, weight=1)
+        # ========== BLOCO ESQUERDO: Dados da Empresa ==========
+        left_frame = ctk.CTkFrame(container)
+        left_frame.grid(row=0, column=0, padx=(0, 5), sticky="nsew")
+        left_frame.columnconfigure(1, weight=1)
 
         # Empresa
-        ctk.CTkLabel(status_frame, text="Empresa:", anchor="w").grid(
+        ctk.CTkLabel(left_frame, text="Empresa:", anchor="w").grid(
             row=0, column=0, padx=10, pady=5, sticky="w"
         )
-        self.empresa_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.empresa_label = ctk.CTkLabel(left_frame, text="-", anchor="w")
         self.empresa_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # CNPJ
-        ctk.CTkLabel(status_frame, text="CNPJ:", anchor="w").grid(
+        ctk.CTkLabel(left_frame, text="CNPJ:", anchor="w").grid(
             row=1, column=0, padx=10, pady=5, sticky="w"
         )
-        self.cnpj_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.cnpj_label = ctk.CTkLabel(left_frame, text="-", anchor="w")
         self.cnpj_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         # Local do Banco
-        ctk.CTkLabel(status_frame, text="Banco:", anchor="w").grid(
+        ctk.CTkLabel(left_frame, text="Banco:", anchor="w").grid(
             row=2, column=0, padx=10, pady=5, sticky="w"
         )
-        self.banco_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.banco_label = ctk.CTkLabel(left_frame, text="-", anchor="w")
         self.banco_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
         # Próximo backup
-        ctk.CTkLabel(status_frame, text="Próximo Backup:", anchor="w").grid(
+        ctk.CTkLabel(left_frame, text="Próximo Backup:", anchor="w").grid(
             row=3, column=0, padx=10, pady=5, sticky="w"
         )
-        self.next_backup_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.next_backup_label = ctk.CTkLabel(left_frame, text="-", anchor="w")
         self.next_backup_label.grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
+        # ========== BLOCO DIREITO: Status e Destinos ==========
+        right_frame = ctk.CTkFrame(container)
+        right_frame.grid(row=0, column=1, padx=(5, 0), sticky="nsew")
+        right_frame.columnconfigure(1, weight=1)
+
         # Último backup
-        ctk.CTkLabel(status_frame, text="Último Backup:", anchor="w").grid(
-            row=4, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(right_frame, text="Último Backup:", anchor="w").grid(
+            row=0, column=0, padx=10, pady=5, sticky="w"
         )
-        self.last_backup_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.last_backup_label.grid(row=4, column=1, padx=10, pady=5, sticky="w")
+        self.last_backup_label = ctk.CTkLabel(right_frame, text="-", anchor="w")
+        self.last_backup_label.grid(row=0, column=1, padx=10, pady=5, sticky="w")
 
         # Conexões
-        ctk.CTkLabel(status_frame, text="Conexões:", anchor="w").grid(
-            row=5, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(right_frame, text="Conexões:", anchor="w").grid(
+            row=1, column=0, padx=10, pady=5, sticky="w"
         )
-        self.connections_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.connections_label.grid(row=5, column=1, padx=10, pady=5, sticky="w")
+        self.connections_label = ctk.CTkLabel(right_frame, text="-", anchor="w")
+        self.connections_label.grid(row=1, column=1, padx=10, pady=5, sticky="w")
 
         # Destino 1
-        ctk.CTkLabel(status_frame, text="Destino 1:", anchor="w").grid(
-            row=6, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(right_frame, text="Destino 1:", anchor="w").grid(
+            row=2, column=0, padx=10, pady=5, sticky="w"
         )
-        self.destino1_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.destino1_label.grid(row=6, column=1, padx=10, pady=5, sticky="w")
+        self.destino1_label = ctk.CTkLabel(right_frame, text="-", anchor="w")
+        self.destino1_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
 
         # Destino 2
-        ctk.CTkLabel(status_frame, text="Destino 2:", anchor="w").grid(
-            row=7, column=0, padx=10, pady=5, sticky="w"
+        ctk.CTkLabel(right_frame, text="Destino 2:", anchor="w").grid(
+            row=3, column=0, padx=10, pady=5, sticky="w"
         )
-        self.destino2_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
-        self.destino2_label.grid(row=7, column=1, padx=10, pady=5, sticky="w")
+        self.destino2_label = ctk.CTkLabel(right_frame, text="-", anchor="w")
+        self.destino2_label.grid(row=3, column=1, padx=10, pady=5, sticky="w")
 
     def _create_actions_area(self):
         """Cria área de ações"""
