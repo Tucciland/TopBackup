@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 # TopBackup - PyInstaller Spec File
+# Gera pasta completa pronta para distribuição
 
 import os
 import sys
@@ -9,10 +10,10 @@ block_cipher = None
 # Diretório base
 BASE_DIR = os.path.dirname(os.path.abspath(SPEC))
 
-# Dados adicionais
+# Dados adicionais - serão copiados para a pasta de distribuição
 datas = [
     (os.path.join(BASE_DIR, 'assets'), 'assets'),
-    (os.path.join(BASE_DIR, 'config'), 'config'),
+    (os.path.join(BASE_DIR, 'config', 'config.json.example'), 'config'),
     (os.path.join(BASE_DIR, 'scripts'), 'scripts'),
 ]
 
@@ -66,52 +67,35 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# Executável principal (GUI)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='TopBackup',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
-    runtime_tmpdir=None,
-    console=False,  # False para GUI, True para console
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
     icon=os.path.join(BASE_DIR, 'assets', 'icon.ico'),
-    version='version_info.txt',  # Arquivo de versão (opcional)
-    uac_admin=False,  # Não requer admin por padrão
+    uac_admin=False,
 )
 
-# Criar também versão para serviço (com console)
-exe_service = EXE(
-    pyz,
-    a.scripts,
+# COLLECT - Gera pasta completa com todos os arquivos
+coll = COLLECT(
+    exe,
     a.binaries,
     a.zipfiles,
     a.datas,
-    [],
-    name='TopBackupService',
-    debug=False,
-    bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
-    console=True,  # True para serviço Windows
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-    icon=os.path.join(BASE_DIR, 'assets', 'icon.ico'),
-    uac_admin=True,  # Requer admin para serviço
+    name='TopBackup',
 )

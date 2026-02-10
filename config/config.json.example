@@ -1,6 +1,6 @@
 {
     "firebird": {
-        "database_path": "C:\\Dados\\BANCO.FDB",
+        "database_path": "",
         "gbak_path": "C:\\Program Files\\Firebird\\Firebird_2_5\\bin\\gbak.exe",
         "user": "SYSDBA",
         "password": "masterkey",
@@ -24,13 +24,13 @@
     "app": {
         "first_run": true,
         "run_as_service": false,
-        "start_minimized": true,
+        "start_minimized": false,
         "auto_update": true,
         "empresa_id": null,
         "empresa_cnpj": ""
     },
     "backup": {
-        "local_destino1": "C:\\Backups",
+        "local_destino1": "",
         "local_destino2": "",
         "backup_remoto": false,
         "prefixo_backup": "V",

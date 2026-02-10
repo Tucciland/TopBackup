@@ -94,6 +94,14 @@ class Settings:
         settings = cls()
         settings._config_path = config_path
 
+        # Se não existe config.json, copia do config.json.example
+        if not os.path.exists(config_path):
+            example_path = config_path.replace('config.json', 'config.json.example')
+            if os.path.exists(example_path):
+                import shutil
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                shutil.copy(example_path, config_path)
+
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
