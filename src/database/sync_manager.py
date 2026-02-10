@@ -86,6 +86,11 @@ class SyncManager:
                 return False, "Agenda de backup não encontrada no Firebird"
 
             # Salva na configuração local
+            self.logger.info(f"Sincronizando destinos do Firebird:")
+            self.logger.info(f"  Destino 1: {self._agenda.local_destino1}")
+            self.logger.info(f"  Destino 2: {self._agenda.local_destino2}")
+            self.logger.info(f"  Prefixo: {self._agenda.prefixo_backup}")
+
             self.settings.backup.local_destino1 = self._agenda.local_destino1
             self.settings.backup.local_destino2 = self._agenda.local_destino2 or ""
             self.settings.backup.backup_remoto = self._agenda.backup_remoto == 'S'

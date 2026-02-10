@@ -165,6 +165,12 @@ class FirebirdClient:
                     row = cursor.fetchone()
 
                 if row:
+                    # Debug: mostra o que veio do Firebird
+                    self.logger.debug(f"AGENDA_BACKUP row: ID={row[0]}, HORARIO={row[1]}")
+                    self.logger.debug(f"  LOCAL_DESTINO1={row[9]}")
+                    self.logger.debug(f"  LOCAL_DESTINO2={row[10]}")
+                    self.logger.debug(f"  PREFIXO_BACKUP={row[12]}, BANCO_ORIGEM={row[13]}")
+
                     return AgendaBackup(
                         id=row[0],
                         horario=row[1] or "23:00",
