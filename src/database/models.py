@@ -136,6 +136,7 @@ class LogBackup:
     tipo_backup: Optional[str] = None
     enviado_ftp: str = 'N'
     data_envio_ftp: Optional[datetime] = None
+    manual: bool = False  # True se foi backup manual, False se automático
 
     def set_sucesso(self, arquivo: str, caminho: str, tamanho: int, tamanho_fmt: str):
         """Define backup como sucesso"""

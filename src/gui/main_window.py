@@ -31,8 +31,8 @@ class MainWindow(ctk.CTk):
 
         # Configuração da janela
         self.title(f"{APP_NAME} v{VERSION}")
-        self.geometry("700x500")
-        self.minsize(600, 400)
+        self.geometry("850x520")
+        self.minsize(800, 450)
 
         # Ícone da janela (barra de tarefas)
         self._set_window_icon()
@@ -360,8 +360,9 @@ class MainWindow(ctk.CTk):
             data = log.data_inicio.strftime("%d/%m %H:%M") if log.data_inicio else "-"
             arquivo = log.nome_arquivo or "-"
             tamanho = log.tamanho_formatado or ""
+            tipo = "[Manual]" if getattr(log, 'manual', False) else "[Auto]"
 
-            line = f"{status_icon} {data} | {arquivo} {tamanho}\n"
+            line = f"{status_icon} {data} | {arquivo} {tamanho} {tipo}\n"
             self.logs_text.insert("end", line)
 
         self.logs_text.configure(state="disabled")
@@ -427,15 +428,7 @@ class MainWindow(ctk.CTk):
         self._hide_progress()
         self.backup_btn.configure(state="normal")
         self._update_status()
-
-        if result.success:
-            show_info(
-                self,
-                "Backup Concluído",
-                f"Arquivo: {result.arquivo}\nTamanho: {result.tamanho_formatado}"
-            )
-        else:
-            show_error(self, "Falha no Backup", result.message)
+        # Notificação já é enviada pelo controller via _on_notification callback
 
     def _on_pause_click(self):
         """Pausa/resume agendamento"""

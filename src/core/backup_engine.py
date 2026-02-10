@@ -94,7 +94,8 @@ class BackupEngine:
             id_empresa=self.settings.app.empresa_id or 0,
             data_inicio=inicio,
             tipo_backup=agenda.prefixo_backup,
-            status=STATUS_EXECUTANDO
+            status=STATUS_EXECUTANDO,
+            manual=manual
         )
 
         # Insere log no MySQL

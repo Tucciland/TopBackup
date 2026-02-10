@@ -4,7 +4,7 @@ Diálogos de mensagem, progresso e configurações
 """
 
 import customtkinter as ctk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from typing import Optional, Callable
 import threading
 
@@ -380,13 +380,29 @@ class SettingsDialog(ctk.CTkToplevel):
 
         # Destino 1
         ctk.CTkLabel(tab, text="Destino Primário:").pack(anchor="w", pady=(10, 2))
-        self.dest1_entry = ctk.CTkEntry(tab, width=400)
-        self.dest1_entry.pack(anchor="w")
+        dest1_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        dest1_frame.pack(anchor="w", fill="x")
+        self.dest1_entry = ctk.CTkEntry(dest1_frame, width=350)
+        self.dest1_entry.pack(side="left")
+        ctk.CTkButton(
+            dest1_frame,
+            text="...",
+            width=40,
+            command=lambda: self._browse_folder(self.dest1_entry)
+        ).pack(side="left", padx=5)
 
         # Destino 2
         ctk.CTkLabel(tab, text="Destino Secundário:").pack(anchor="w", pady=(10, 2))
-        self.dest2_entry = ctk.CTkEntry(tab, width=400)
-        self.dest2_entry.pack(anchor="w")
+        dest2_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        dest2_frame.pack(anchor="w", fill="x")
+        self.dest2_entry = ctk.CTkEntry(dest2_frame, width=350)
+        self.dest2_entry.pack(side="left")
+        ctk.CTkButton(
+            dest2_frame,
+            text="...",
+            width=40,
+            command=lambda: self._browse_folder(self.dest2_entry)
+        ).pack(side="left", padx=5)
 
         # Opções
         self.zip_var = ctk.BooleanVar()
@@ -467,6 +483,16 @@ class SettingsDialog(ctk.CTkToplevel):
         ctk.CTkLabel(mysql_inner, text="Host:").pack(anchor="w")
         self.mysql_host_entry = ctk.CTkEntry(mysql_inner, width=350)
         self.mysql_host_entry.pack(anchor="w")
+
+    def _browse_folder(self, entry_widget):
+        """Abre diálogo para selecionar pasta"""
+        folder = filedialog.askdirectory(
+            title="Selecionar Pasta de Destino",
+            initialdir=entry_widget.get() or "/"
+        )
+        if folder:
+            entry_widget.delete(0, "end")
+            entry_widget.insert(0, folder)
 
     def _load_values(self):
         """Carrega valores atuais"""
