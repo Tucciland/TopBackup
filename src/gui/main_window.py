@@ -479,7 +479,9 @@ class MainWindow(ctk.CTk):
 
     def _on_settings_click(self):
         """Abre configurações"""
-        dialog = SettingsDialog(self, self.settings)
+        # Recarrega settings para garantir valores atualizados
+        self.settings = Settings.load()
+        dialog = SettingsDialog(self, self.settings, on_save_callback=self._update_status)
         dialog.grab_set()
 
     def _on_logs_click(self):

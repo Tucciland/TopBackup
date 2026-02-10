@@ -290,11 +290,12 @@ class AgendaListDialog(ctk.CTkToplevel):
 class SettingsDialog(ctk.CTkToplevel):
     """Diálogo de configurações"""
 
-    def __init__(self, parent, settings: Settings):
+    def __init__(self, parent, settings: Settings, on_save_callback: Callable = None):
         super().__init__(parent)
 
         self.settings = settings
         self.logger = get_logger()
+        self.on_save_callback = on_save_callback
 
         self.title("Configurações")
         self.geometry("500x400")
@@ -533,6 +534,9 @@ class SettingsDialog(ctk.CTkToplevel):
         # Salva
         if self.settings.save():
             show_info(self, "Sucesso", "Configurações salvas com sucesso!")
+            # Notifica a janela principal para atualizar
+            if self.on_save_callback:
+                self.on_save_callback()
             self.destroy()
         else:
             show_error(self, "Erro", "Falha ao salvar configurações")
