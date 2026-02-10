@@ -6,7 +6,9 @@ Interface CustomTkinter do aplicativo
 import customtkinter as ctk
 from datetime import datetime
 from typing import Optional, Callable
+from pathlib import Path
 import threading
+import sys
 
 from ..config.settings import Settings
 from ..core.app_controller import AppController, AppState
@@ -32,6 +34,9 @@ class MainWindow(ctk.CTk):
         self.geometry("700x500")
         self.minsize(600, 400)
 
+        # Ícone da janela (barra de tarefas)
+        self._set_window_icon()
+
         # Tema
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -55,6 +60,20 @@ class MainWindow(ctk.CTk):
 
         # Timer para atualização automática
         self._start_update_timer()
+
+    def _set_window_icon(self):
+        """Define o ícone da janela (barra de tarefas)"""
+        try:
+            if getattr(sys, 'frozen', False):
+                base_dir = Path(sys.executable).parent
+            else:
+                base_dir = Path(__file__).parent.parent.parent
+
+            icon_path = base_dir / "assets" / "icon.ico"
+            if icon_path.exists():
+                self.iconbitmap(str(icon_path))
+        except Exception as e:
+            self.logger.warning(f"Erro ao definir ícone: {e}")
 
     def _create_widgets(self):
         """Cria todos os widgets da interface"""
