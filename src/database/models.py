@@ -4,8 +4,8 @@ Dataclasses para representar entidades do sistema
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, time
+from typing import Optional, Union
 from enum import Enum
 
 
@@ -69,7 +69,7 @@ class AgendaBackup:
     """
     id: Optional[int] = None
     id_empresa: Optional[int] = None
-    horario: str = "23:00"
+    horario: Union[str, time] = "23:00"
     dom: str = 'N'
     seg: str = 'S'
     ter: str = 'S'
@@ -110,9 +110,13 @@ class AgendaBackup:
     def get_hora_minuto(self) -> tuple:
         """Retorna hora e minuto do agendamento"""
         try:
-            partes = self.horario.split(':')
+            # Se for objeto time do datetime, usa diretamente
+            if isinstance(self.horario, time):
+                return self.horario.hour, self.horario.minute
+            # Se for string, faz o parse
+            partes = str(self.horario).split(':')
             return int(partes[0]), int(partes[1])
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, AttributeError):
             return 23, 0
 
 

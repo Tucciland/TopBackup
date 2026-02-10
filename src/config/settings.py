@@ -117,7 +117,11 @@ class Settings:
 
                 # Carrega Backup config
                 if 'backup' in data:
-                    settings.backup = BackupConfig(**data['backup'])
+                    backup_data = data['backup'].copy()
+                    # Compatibilidade: renomeia campo antigo para novo
+                    if 'prefixo_arquivo' in backup_data:
+                        backup_data['prefixo_backup'] = backup_data.pop('prefixo_arquivo')
+                    settings.backup = BackupConfig(**backup_data)
 
             except (json.JSONDecodeError, TypeError) as e:
                 print(f"Erro ao carregar configurações: {e}")
