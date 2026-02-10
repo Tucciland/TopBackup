@@ -102,9 +102,17 @@ class BackupEngine:
             log.id = self.mysql.insert_log_backup(log)
 
         try:
+            # Log do destino configurado
+            self.logger.info(f"Destino 1: {agenda.local_destino1 or '(vazio)'}")
+            self.logger.info(f"Destino 2: {agenda.local_destino2 or '(vazio)'}")
+            self.logger.info(f"Tipo backup: {agenda.prefixo_backup}")
+
             # 1. Executa gbak
             self._report_progress("Iniciando backup com gbak...")
             fbk_path = self._execute_gbak()
+
+            self.logger.info(f"Backup criado em: {fbk_path}")
+            self.logger.info(f"Tamanho do .fbk: {os.path.getsize(fbk_path)} bytes")
 
             if self._cancel_requested:
                 raise BackupCancelledError("Backup cancelado pelo usuário")
@@ -120,6 +128,8 @@ class BackupEngine:
             if self.settings.backup.compactar_zip:
                 self._report_progress("Compactando arquivo...")
                 final_path = self._compress_backup(fbk_path, empresa, agenda)
+                self.logger.info(f"ZIP criado: {final_path}")
+                self.logger.info(f"Tamanho do ZIP: {os.path.getsize(final_path)} bytes")
             else:
                 final_path = fbk_path
 
@@ -127,13 +137,15 @@ class BackupEngine:
                 raise BackupCancelledError("Backup cancelado pelo usuário")
 
             # 4. Move para destinos
-            self._report_progress("Movendo para destino...")
+            self._report_progress(f"Movendo para: {agenda.local_destino1}")
+            self.logger.info(f"Movendo {final_path} para {agenda.local_destino1}")
             destino1 = self._move_to_destination(
                 final_path,
                 agenda.local_destino1,
                 empresa,
                 agenda
             )
+            self.logger.info(f"Arquivo movido para: {destino1}")
 
             # 5. Copia para destino secundário
             if agenda.local_destino2:
