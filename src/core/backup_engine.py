@@ -247,13 +247,15 @@ class BackupEngine:
         fbk_filename = f"backup_{timestamp}{BACKUP_EXTENSION}"
         fbk_path = temp_dir / fbk_filename
 
-        # Monta comando gbak
+        # Monta comando gbak - backup completo
         cmd = [
             gbak_path,
             '-b',           # Backup
             '-v',           # Verbose
+            '-g',           # No garbage collection (captura todos os dados)
+            '-ig',          # Ignore limbo transactions
             '-user', self.settings.firebird.user,
-            '-password', self.settings.firebird.password,
+            '-pas', self.settings.firebird.password,  # -pas em vez de -password (compatibilidade)
             db_path,
             str(fbk_path)
         ]
