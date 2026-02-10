@@ -176,6 +176,9 @@ class BackupScheduler:
             self._is_running = True
             self.logger.info("Scheduler iniciado")
 
+            # Atualiza próximo backup após iniciar (jobs só têm next_run_time após start)
+            self._update_next_backup()
+
     def stop(self):
         """Para o scheduler"""
         if self._is_running:
@@ -245,6 +248,9 @@ class BackupScheduler:
 
     def get_next_backup_time(self) -> Optional[datetime]:
         """Retorna próximo horário de backup"""
+        # Se não tem cache ou scheduler está rodando, calcula dinamicamente
+        if self._next_backup is None and self._is_running:
+            self._update_next_backup()
         return self._next_backup
 
     def get_scheduled_jobs(self) -> List[dict]:

@@ -31,8 +31,8 @@ class MainWindow(ctk.CTk):
 
         # Configuração da janela
         self.title(f"{APP_NAME} v{VERSION}")
-        self.geometry("850x520")
-        self.minsize(800, 450)
+        self.geometry("780x550")
+        self.minsize(750, 500)
 
         # Ícone da janela (barra de tarefas)
         self._set_window_icon()
@@ -184,6 +184,20 @@ class MainWindow(ctk.CTk):
         self.connections_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
         self.connections_label.grid(row=5, column=1, padx=10, pady=5, sticky="w")
 
+        # Destino 1
+        ctk.CTkLabel(status_frame, text="Destino 1:", anchor="w").grid(
+            row=6, column=0, padx=10, pady=5, sticky="w"
+        )
+        self.destino1_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.destino1_label.grid(row=6, column=1, padx=10, pady=5, sticky="w")
+
+        # Destino 2
+        ctk.CTkLabel(status_frame, text="Destino 2:", anchor="w").grid(
+            row=7, column=0, padx=10, pady=5, sticky="w"
+        )
+        self.destino2_label = ctk.CTkLabel(status_frame, text="-", anchor="w")
+        self.destino2_label.grid(row=7, column=1, padx=10, pady=5, sticky="w")
+
     def _create_actions_area(self):
         """Cria área de ações"""
         actions_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -236,22 +250,24 @@ class MainWindow(ctk.CTk):
             actions_frame,
             text="Agendas",
             command=self._on_agendas_click,
-            width=100,
+            width=80,
             height=40,
             fg_color="purple",
             hover_color="darkviolet"
         )
-        agendas_btn.pack(side="left", padx=5)
+        agendas_btn.pack(side="left", padx=3)
 
-        # Botão de atualizar config
+        # Botão de receber config do Firebird
         refresh_btn = ctk.CTkButton(
             actions_frame,
-            text="Atualizar Config",
+            text="Receber Config",
             command=self._on_refresh_click,
-            width=130,
-            height=40
+            width=110,
+            height=40,
+            fg_color="teal",
+            hover_color="darkcyan"
         )
-        refresh_btn.pack(side="right", padx=5)
+        refresh_btn.pack(side="left", padx=3)
 
     def _create_logs_area(self):
         """Cria área de logs resumidos"""
@@ -325,6 +341,16 @@ class MainWindow(ctk.CTk):
         conn_text = f"Firebird: {'OK' if fb_ok else 'Erro'} | MySQL: {'OK' if mysql_ok else 'Erro'}"
         conn_color = "green" if (fb_ok and mysql_ok) else "orange"
         self.connections_label.configure(text=conn_text, text_color=conn_color)
+
+        # Destinos
+        dest1 = status.get('destino1', '-') or '-'
+        dest2 = status.get('destino2', '-') or '-'
+        if len(dest1) > 50:
+            dest1 = "..." + dest1[-47:]
+        if len(dest2) > 50:
+            dest2 = "..." + dest2[-47:]
+        self.destino1_label.configure(text=dest1)
+        self.destino2_label.configure(text=dest2 if dest2 != '-' else "(não configurado)")
 
         # Status geral
         state = status.get('state', 'unknown')

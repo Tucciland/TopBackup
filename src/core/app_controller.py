@@ -366,6 +366,8 @@ class AppController:
             'empresa': self._empresa.fantasia if self._empresa else None,
             'cnpj': self._empresa.cnpj if self._empresa else None,
             'database_path': self.settings.firebird.database_path,
+            'destino1': self.settings.backup.local_destino1,
+            'destino2': self.settings.backup.local_destino2,
             'next_backup': self.get_next_backup_time(),
             'last_backup': self._last_backup_result.arquivo if self._last_backup_result else None,
             'last_backup_success': self._last_backup_result.success if self._last_backup_result else None,
@@ -373,12 +375,30 @@ class AppController:
             'mysql_connected': self._sync_manager.is_connected_mysql() if self._sync_manager else False,
         }
 
-    def reload_config(self):
-        """Recarrega configurações"""
+    def reload_config(self, force_from_firebird: bool = True):
+        """
+        Recarrega configurações do Firebird
+
+        Args:
+            force_from_firebird: Se True, sobrescreve destinos locais com os do Firebird
+        """
         self.settings = Settings.load()
 
         if self._sync_manager:
             self._sync_manager.refresh()
+
+            # Força atualização dos destinos do Firebird
+            if force_from_firebird and self._firebird:
+                agenda_fb = self._firebird.get_agenda_backup()
+                if agenda_fb:
+                    self.settings.backup.local_destino1 = agenda_fb.local_destino1 or ""
+                    self.settings.backup.local_destino2 = agenda_fb.local_destino2 or ""
+                    self.settings.backup.prefixo_backup = agenda_fb.prefixo_backup
+                    self.settings.save()
+                    self.logger.info(f"Destinos atualizados do Firebird:")
+                    self.logger.info(f"  Destino 1: {agenda_fb.local_destino1}")
+                    self.logger.info(f"  Destino 2: {agenda_fb.local_destino2}")
+
             self._sync_manager.full_sync()
             self._agenda = self._sync_manager.get_agenda()
 

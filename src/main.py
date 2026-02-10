@@ -128,6 +128,9 @@ def run_gui():
     # Inicia controller
     controller.start()
 
+    # Atualiza status após scheduler iniciar (para mostrar próximo backup)
+    window._update_status()
+
     # Minimiza se configurado
     if settings.app.start_minimized:
         window.withdraw()
