@@ -11,6 +11,7 @@ from .firebird_client import FirebirdClient
 from .mysql_client import MySQLClient
 from ..config.settings import Settings
 from ..utils.logger import get_logger
+from ..version import VERSION
 
 
 class SyncManager:
@@ -43,9 +44,8 @@ class SyncManager:
             if not self._empresa_local.cnpj:
                 return False, "CNPJ não encontrado na empresa", None
 
-            # Busca versão do sistema
-            versao = self.firebird.get_versao_sistema()
-            self._empresa_local.versao_local = versao
+            # Usa versão do TopBackup
+            self._empresa_local.versao_local = VERSION
 
             # Atualiza data de interação
             self._empresa_local.data_ultima_interacao = datetime.now()
