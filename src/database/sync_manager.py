@@ -85,14 +85,32 @@ class SyncManager:
             if not self._agenda:
                 return False, "Agenda de backup não encontrada no Firebird"
 
-            # Salva na configuração local
-            self.logger.info(f"Sincronizando destinos do Firebird:")
-            self.logger.info(f"  Destino 1: {self._agenda.local_destino1}")
-            self.logger.info(f"  Destino 2: {self._agenda.local_destino2}")
-            self.logger.info(f"  Prefixo: {self._agenda.prefixo_backup}")
+            # Sincroniza configurações - config local tem prioridade sobre Firebird
+            self.logger.info(f"Valores do Firebird:")
+            self.logger.info(f"  Destino 1 FB: {self._agenda.local_destino1}")
+            self.logger.info(f"  Destino 2 FB: {self._agenda.local_destino2}")
+            self.logger.info(f"Valores da Config Local:")
+            self.logger.info(f"  Destino 1 Config: {self.settings.backup.local_destino1}")
+            self.logger.info(f"  Destino 2 Config: {self.settings.backup.local_destino2}")
 
-            self.settings.backup.local_destino1 = self._agenda.local_destino1
-            self.settings.backup.local_destino2 = self._agenda.local_destino2 or ""
+            # Só usa valor do Firebird se config local estiver vazia
+            if not self.settings.backup.local_destino1:
+                self.settings.backup.local_destino1 = self._agenda.local_destino1
+                self.logger.info(f"Usando destino 1 do Firebird: {self._agenda.local_destino1}")
+            else:
+                # Atualiza a agenda com o valor da config local para usar no backup
+                self._agenda.local_destino1 = self.settings.backup.local_destino1
+                self.logger.info(f"Mantendo destino 1 da config: {self.settings.backup.local_destino1}")
+
+            if not self.settings.backup.local_destino2:
+                self.settings.backup.local_destino2 = self._agenda.local_destino2 or ""
+                self.logger.info(f"Usando destino 2 do Firebird: {self._agenda.local_destino2}")
+            else:
+                # Atualiza a agenda com o valor da config local
+                self._agenda.local_destino2 = self.settings.backup.local_destino2
+                self.logger.info(f"Mantendo destino 2 da config: {self.settings.backup.local_destino2}")
+
+            # Prefixo e backup_remoto sempre vêm do Firebird
             self.settings.backup.backup_remoto = self._agenda.backup_remoto == 'S'
             self.settings.backup.prefixo_backup = self._agenda.prefixo_backup
 
