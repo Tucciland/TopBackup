@@ -256,19 +256,15 @@ class BackupEngine:
         fbk_path = temp_dir / fbk_filename
 
         # Monta comando gbak - backup completo
-        cmd = [
-            gbak_path,
-            '-b',           # Backup
-            '-v',           # Verbose
-            '-g',           # No garbage collection (captura todos os dados)
-            '-ig',          # Ignore limbo transactions
-            '-user', self.settings.firebird.user,
-            '-pas', self.settings.firebird.password,  # -pas em vez de -password (compatibilidade)
-            db_path,
-            str(fbk_path)
-        ]
+        # Usa aspas nos caminhos para compatibilidade com gbak
+        cmd = (
+            f'"{gbak_path}" -b -v -g -ig '
+            f'-user {self.settings.firebird.user} '
+            f'-pas {self.settings.firebird.password} '
+            f'"{db_path}" "{fbk_path}"'
+        )
 
-        self.logger.debug(f"Executando: {' '.join(cmd)}")
+        self.logger.debug(f"Executando: {cmd}")
 
         try:
             # Remove FIREBIRD do ambiente para evitar conflito com gbak do sistema
@@ -283,6 +279,7 @@ class BackupEngine:
                 text=True,
                 timeout=BACKUP_TIMEOUT,
                 env=env,
+                shell=True,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
@@ -321,12 +318,10 @@ class BackupEngine:
 
         # Tenta validar com gbak -z, mas não falha se houver erro de mensagens
         gbak_path = self.settings.firebird.gbak_path
+        if os.name == 'nt':
+            gbak_path = os.path.normpath(gbak_path)
 
-        cmd = [
-            gbak_path,
-            '-z',           # Mostra info do backup (valida)
-            fbk_path
-        ]
+        cmd = f'"{gbak_path}" -z "{fbk_path}"'
 
         try:
             # Remove FIREBIRD do ambiente para gbak usar seu próprio diretório
@@ -339,6 +334,7 @@ class BackupEngine:
                 text=True,
                 timeout=60,
                 env=env,
+                shell=True,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
