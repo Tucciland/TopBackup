@@ -269,11 +269,15 @@ class BackupEngine:
         self.logger.debug(f"Executando: {cmd}")
 
         try:
-            # Configura ambiente para gbak
-            # Define FIREBIRD para o diretório do gbak instalado (não o embutido)
-            env = os.environ.copy()
-            gbak_dir = str(Path(gbak_path).parent.parent)  # Ex: C:\Program Files (x86)\Firebird\Firebird_2_5
-            env['FIREBIRD'] = gbak_dir
+            # Configura ambiente mínimo para gbak (evita herdar DLLs do processo)
+            gbak_dir = str(Path(gbak_path).parent.parent)
+            env = {
+                'SYSTEMROOT': os.environ.get('SYSTEMROOT', r'C:\Windows'),
+                'PATH': os.environ.get('PATH', ''),
+                'FIREBIRD': gbak_dir,
+                'TEMP': str(temp_dir),
+                'TMP': str(temp_dir),
+            }
             self.logger.debug(f"FIREBIRD={gbak_dir}")
 
             result = subprocess.run(
