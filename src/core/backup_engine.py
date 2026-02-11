@@ -242,6 +242,11 @@ class BackupEngine:
         if not os.path.exists(db_path):
             raise BackupError(f"Banco de dados não encontrado: {db_path}")
 
+        # Normaliza caminhos para Windows (gbak não aceita barras normais)
+        if os.name == 'nt':
+            db_path = os.path.normpath(db_path)
+            gbak_path = os.path.normpath(gbak_path)
+
         # Cria diretório temporário
         temp_dir = FileUtils.get_temp_directory()
         temp_dir.mkdir(exist_ok=True)
