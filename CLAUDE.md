@@ -68,7 +68,7 @@ pyinstaller topbackup.spec
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.3
+**Versão Atual:** 1.0.4
 **Última Atualização:** 2026-02-11
 
 ### ✅ Implementado e Funcionando
@@ -130,6 +130,9 @@ pyinstaller topbackup.spec
 ---
 
 ## Histórico de Sessões
+
+### 2026-02-11
+- **v1.0.4**: Corrigido bug onde barra de progresso ficava carregando infinitamente após backup automático (agora esconde ao finalizar)
 
 ### 2026-02-11
 - **v1.0.3**: Removidos pop-ups de atualização (versão disponível, download, erro) - mantido apenas no log

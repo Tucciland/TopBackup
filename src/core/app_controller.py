@@ -266,6 +266,9 @@ class AppController:
 
         finally:
             self._set_state(AppState.RUNNING)
+            # Sinaliza fim do progresso para esconder a barra na UI
+            if self._backup_progress_callback:
+                self._backup_progress_callback("")
 
     def cancel_backup(self):
         """Cancela backup em execução"""

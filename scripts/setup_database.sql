@@ -67,10 +67,26 @@ CREATE TABLE IF NOT EXISTS VERSAO_APP (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- Inserir versão inicial do aplicativo
+-- Inserir versões do aplicativo
 -- ============================================
 INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
 VALUES ('1.0.0', 'https://seu-servidor.com/downloads/TopBackup_1.0.0.exe', 'Versão inicial do TopBackup', 'N')
+ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD);
+
+INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+VALUES ('1.0.1', 'https://seu-servidor.com/downloads/TopBackup_1.0.1.exe', 'Correções de bugs e melhorias', 'N')
+ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD);
+
+INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+VALUES ('1.0.2', 'https://seu-servidor.com/downloads/TopBackup_1.0.2.exe', 'Melhorias na interface e estabilidade', 'N')
+ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD);
+
+INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+VALUES ('1.0.3', 'https://seu-servidor.com/downloads/TopBackup_1.0.3.exe', 'Removidos pop-ups de atualização, adicionado campo CAMINHO_DESTINO2', 'N')
+ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD);
+
+INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+VALUES ('1.0.4', 'https://seu-servidor.com/downloads/TopBackup_1.0.4.exe', 'Corrigido bug da barra de progresso infinita após backup automático', 'N')
 ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD);
 
 -- ============================================

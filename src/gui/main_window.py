@@ -422,7 +422,11 @@ class MainWindow(ctk.CTk):
 
     def _on_backup_progress(self, message: str):
         """Callback de progresso do backup"""
-        self.after(0, lambda: self._show_progress(message))
+        if message:
+            self.after(0, lambda: self._show_progress(message))
+        else:
+            # Mensagem vazia indica fim do backup - esconde a barra
+            self.after(0, self._hide_progress)
 
     def _on_notification(self, title: str, message: str):
         """Callback de notificação"""
