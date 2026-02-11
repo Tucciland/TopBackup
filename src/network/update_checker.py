@@ -149,6 +149,8 @@ class UpdateChecker:
             shutil.copy2(update_path, new_exe)
 
             # Cria script de atualização dinamicamente
+            backup_exe = os.path.join(update_dir, "TopBackup_backup.exe")
+
             script_content = f'''@echo off
 chcp 65001 >nul
 echo ==========================================
@@ -158,7 +160,7 @@ echo.
 
 set "NEW_EXE={new_exe}"
 set "CURRENT_EXE={current_exe}"
-set "BACKUP_EXE={os.path.join(update_dir, "TopBackup_backup.exe")}"
+set "BACKUP_EXE={backup_exe}"
 
 echo Aguardando aplicativo fechar...
 timeout /t 3 /nobreak >nul
@@ -198,12 +200,13 @@ exit /b 0
             with open(script_path, 'w', encoding='utf-8') as f:
                 f.write(script_content)
 
-            # Inicia script de atualização
+            # Inicia script de atualização usando cmd.exe
             import subprocess
             subprocess.Popen(
-                [script_path],
+                f'cmd.exe /c "{script_path}"',
                 cwd=app_dir,
-                creationflags=subprocess.CREATE_NEW_CONSOLE | subprocess.DETACHED_PROCESS
+                shell=True,
+                creationflags=subprocess.CREATE_NEW_CONSOLE
             )
 
             return True, "Atualização iniciada. O aplicativo será reiniciado."
