@@ -181,9 +181,15 @@ class FileUtils:
 
     @staticmethod
     def get_temp_directory() -> Path:
-        """Retorna diretório temporário do sistema"""
-        import tempfile
-        return Path(tempfile.gettempdir()) / "topbackup_temp"
+        """Retorna diretório temporário para backups"""
+        import sys
+        # Usa C:\TOPBACKUP\temp quando executável (evita problemas com temp do PyInstaller)
+        # Em desenvolvimento usa o temp do sistema
+        if getattr(sys, 'frozen', False):
+            return Path(r"C:\TOPBACKUP\temp")
+        else:
+            import tempfile
+            return Path(tempfile.gettempdir()) / "topbackup_temp"
 
     @staticmethod
     def cleanup_temp_files(max_age_hours: int = 24):
