@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS LOG_BACKUPS (
     DATA_FIM          DATETIME,
     NOME_ARQUIVO      VARCHAR(200),
     CAMINHO_DESTINO   VARCHAR(500),
+    CAMINHO_DESTINO2  VARCHAR(500),
     TAMANHO_BYTES     BIGINT,                                   -- Suporta arquivos grandes
     TAMANHO_FORMATADO VARCHAR(20),
     STATUS            CHAR(1) NOT NULL DEFAULT 'P',             -- P=Pendente, E=Executando, S=Sucesso, F=Falha

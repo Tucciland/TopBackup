@@ -63,3 +63,90 @@ pyinstaller topbackup.spec
 - The app uses `assets/firebird/x64/` or `x86/` based on Python architecture
 - gbak command uses `-g -ig -pas` flags for complete backup compatibility
 - APScheduler timezone is `America/Sao_Paulo`
+
+---
+
+## Status do Desenvolvimento
+
+**Versão Atual:** 1.0.0
+**Última Atualização:** 2026-02-10
+
+### ✅ Implementado e Funcionando
+
+**Core:**
+- AppController (orquestrador central)
+- BackupEngine (gbak → validação → ZIP → destinos)
+- BackupScheduler (APScheduler com múltiplas agendas)
+- Três tipos de backup: Versionado (V), Semanal (S), Único (U)
+
+**Database:**
+- FirebirdClient (leitura EMPRESA, AGENDA_BACKUP)
+- MySQLClient (sync com servidor cloud, log de backups)
+- SyncManager (sincronização bidirecional)
+
+**Interface:**
+- GUI completa (CustomTkinter)
+- Setup Wizard (4 etapas: Firebird, MySQL, FTP, Resumo)
+- System Tray com minimize/restore
+- Diálogos: progresso, logs, configurações, agendas
+
+**Serviço Windows:**
+- Instalação/desinstalação como serviço
+- IPC via Named Pipes
+- Auto-instalação em C:\TOPBACKUP
+
+**Rede:**
+- FTP Client (upload de backups, modo passivo, retry)
+- Update Checker (verificação a cada 6h, SHA256)
+
+**Infraestrutura:**
+- Logger rotativo (5 backups de 5MB)
+- Retry com backoff exponencial
+- Circuit Breaker
+- Timeout protection (gbak=1h, DB=30s)
+
+### 🔄 Em Progresso
+
+- (nenhum item no momento)
+
+### 📋 Pendente / Futuro
+
+- [ ] Testes automatizados (0% cobertura)
+- [ ] Funcionalidade de Restore
+- [ ] Notificações por email
+- [ ] Criptografia de backups
+- [ ] Dashboard web de monitoramento
+- [ ] API REST para integração
+- [ ] Suporte a cloud storage (S3, OneDrive)
+- [ ] Agendamento avançado (exceções, feriados)
+
+### 🐛 Bugs / Problemas Conhecidos
+
+- fbclient.dll deve estar em `assets/firebird/x64/` ou `x86/`
+- Credenciais MySQL em texto plano no config.json
+- Paths com caracteres especiais podem causar issues
+- Timeout de 1h para gbak pode não ser suficiente para DBs muito grandes
+
+---
+
+## Histórico de Sessões
+
+### 2026-02-11
+- Ajustado intervalo de verificação de atualizações de 6h para 10min (para testes)
+- Adicionado campo CAMINHO_DESTINO2 na tabela LOG_BACKUPS para registrar ambos os destinos
+- Atualizado modelo LogBackup, MySQLClient (insert/update/get) e BackupEngine
+- Adicionada migração automática da coluna CAMINHO_DESTINO2 no ensure_schema
+
+### 2026-02-10
+- Documentação do estado atual do projeto no CLAUDE.md
+- Análise completa de todos os módulos implementados
+
+---
+
+## Notas para Próxima Sessão
+
+Ao retomar o desenvolvimento:
+1. Ler este arquivo para contexto
+2. Verificar seção "Em Progresso" para tarefas iniciadas
+3. Consultar "Pendente" para próximas features
+4. Atualizar "Histórico de Sessões" ao final

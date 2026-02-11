@@ -168,9 +168,10 @@ class BackupEngine:
                 raise
 
             # 5. Copia para destino secundário
+            destino2 = None
             if agenda.local_destino2:
                 self._report_progress("Copiando para destino secundário...")
-                self._copy_to_destination(
+                destino2 = self._copy_to_destination(
                     destino1,
                     agenda.local_destino2
                 )
@@ -185,7 +186,8 @@ class BackupEngine:
                 arquivo=os.path.basename(destino1),
                 caminho=destino1,
                 tamanho=tamanho,
-                tamanho_fmt=tamanho_fmt
+                tamanho_fmt=tamanho_fmt,
+                caminho2=destino2
             )
 
             if self.mysql and log.id:

@@ -300,6 +300,11 @@ class AppController:
 
     def _on_update_schedule(self):
         """Callback para verificação de updates"""
+        # Atualiza DATA_ULTIMA_INTERACAO a cada verificação (independente de haver update)
+        if self._mysql and self.settings.app.empresa_id:
+            self._mysql.update_empresa_interacao(self.settings.app.empresa_id)
+            self.logger.debug("DATA_ULTIMA_INTERACAO atualizada na verificação de updates")
+
         if self._update_checker:
             self._update_checker.check_for_updates()
 

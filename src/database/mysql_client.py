@@ -182,9 +182,9 @@ class MySQLClient:
                 sql = """
                     INSERT INTO LOG_BACKUPS
                     (ID_EMPRESA, DATA_INICIO, DATA_FIM, NOME_ARQUIVO,
-                     CAMINHO_DESTINO, TAMANHO_BYTES, TAMANHO_FORMATADO,
+                     CAMINHO_DESTINO, CAMINHO_DESTINO2, TAMANHO_BYTES, TAMANHO_FORMATADO,
                      STATUS, MENSAGEM_ERRO, TIPO_BACKUP, ENVIADO_FTP, DATA_ENVIO_FTP, MANUAL)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(sql, (
                     log.id_empresa,
@@ -192,6 +192,7 @@ class MySQLClient:
                     log.data_fim,
                     log.nome_arquivo,
                     log.caminho_destino,
+                    log.caminho_destino2,
                     log.tamanho_bytes,
                     log.tamanho_formatado,
                     log.status,
@@ -218,6 +219,7 @@ class MySQLClient:
                         DATA_FIM = %s,
                         NOME_ARQUIVO = %s,
                         CAMINHO_DESTINO = %s,
+                        CAMINHO_DESTINO2 = %s,
                         TAMANHO_BYTES = %s,
                         TAMANHO_FORMATADO = %s,
                         STATUS = %s,
@@ -230,6 +232,7 @@ class MySQLClient:
                     log.data_fim,
                     log.nome_arquivo,
                     log.caminho_destino,
+                    log.caminho_destino2,
                     log.tamanho_bytes,
                     log.tamanho_formatado,
                     log.status,
@@ -261,8 +264,9 @@ class MySQLClient:
 
                 logs = []
                 for row in rows:
-                    # Campo MANUAL pode não existir em bancos antigos
+                    # Campos podem não existir em bancos antigos
                     manual_value = row.get('MANUAL', 'N')
+                    caminho_destino2 = row.get('CAMINHO_DESTINO2')
                     logs.append(LogBackup(
                         id=row['ID'],
                         id_empresa=row['ID_EMPRESA'],
@@ -270,6 +274,7 @@ class MySQLClient:
                         data_fim=row['DATA_FIM'],
                         nome_arquivo=row['NOME_ARQUIVO'],
                         caminho_destino=row['CAMINHO_DESTINO'],
+                        caminho_destino2=caminho_destino2,
                         tamanho_bytes=row['TAMANHO_BYTES'],
                         tamanho_formatado=row['TAMANHO_FORMATADO'],
                         status=row['STATUS'],
@@ -358,6 +363,23 @@ class MySQLClient:
                     """)
                     conn.commit()
                     self.logger.info("Coluna MANUAL adicionada à tabela LOG_BACKUPS")
+
+                # Verifica se coluna CAMINHO_DESTINO2 existe em LOG_BACKUPS
+                cursor.execute("""
+                    SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = %s
+                    AND TABLE_NAME = 'LOG_BACKUPS'
+                    AND COLUMN_NAME = 'CAMINHO_DESTINO2'
+                """, (self.config.database,))
+
+                if cursor.fetchone()[0] == 0:
+                    # Adiciona coluna CAMINHO_DESTINO2
+                    cursor.execute("""
+                        ALTER TABLE LOG_BACKUPS
+                        ADD COLUMN CAMINHO_DESTINO2 VARCHAR(500) AFTER CAMINHO_DESTINO
+                    """)
+                    conn.commit()
+                    self.logger.info("Coluna CAMINHO_DESTINO2 adicionada à tabela LOG_BACKUPS")
 
                 # Migração: Renomeia DATA_ULTIMA_ABERTURA para DATA_ULTIMA_INTERACAO
                 cursor.execute("""

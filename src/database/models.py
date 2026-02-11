@@ -128,6 +128,7 @@ class LogBackup:
     data_fim: Optional[datetime] = None
     nome_arquivo: Optional[str] = None
     caminho_destino: Optional[str] = None
+    caminho_destino2: Optional[str] = None
     tamanho_bytes: Optional[int] = None
     tamanho_formatado: Optional[str] = None
     status: str = StatusBackup.PENDENTE.value
@@ -137,12 +138,13 @@ class LogBackup:
     data_envio_ftp: Optional[datetime] = None
     manual: bool = False  # True se foi backup manual, False se automático
 
-    def set_sucesso(self, arquivo: str, caminho: str, tamanho: int, tamanho_fmt: str):
+    def set_sucesso(self, arquivo: str, caminho: str, tamanho: int, tamanho_fmt: str, caminho2: Optional[str] = None):
         """Define backup como sucesso"""
         self.status = StatusBackup.SUCESSO.value
         self.data_fim = datetime.now()
         self.nome_arquivo = arquivo
         self.caminho_destino = caminho
+        self.caminho_destino2 = caminho2
         self.tamanho_bytes = tamanho
         self.tamanho_formatado = tamanho_fmt
 

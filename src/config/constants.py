@@ -4,7 +4,7 @@ TopBackup - Constantes do Sistema
 
 # Intervalos de tempo (em segundos)
 CONFIG_SYNC_INTERVAL = 1800  # 30 minutos
-UPDATE_CHECK_INTERVAL = 21600  # 6 horas
+UPDATE_CHECK_INTERVAL = 600  # 10 minutos (teste) - após testes mudar para 3600 (1 hora)
 
 # Timeouts (em segundos)
 FIREBIRD_TIMEOUT = 30
