@@ -121,7 +121,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.4
+**Versão Atual:** 1.0.5
 **Última Atualização:** 2026-02-11
 
 ### ✅ Implementado e Funcionando
@@ -185,6 +185,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 ## Histórico de Sessões
 
 ### 2026-02-11
+- **v1.0.5**: Corrigido erro de "firebird.msg not found" ao executar gbak - variável FIREBIRD agora é removida do ambiente do subprocess para evitar conflito entre fbclient embutido e gbak do sistema instalado
 - **v1.0.4**: Corrigido bug onde barra de progresso ficava carregando infinitamente após backup automático (agora esconde ao finalizar)
 
 ### 2026-02-11

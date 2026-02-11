@@ -266,11 +266,18 @@ class BackupEngine:
         self.logger.debug(f"Executando: {' '.join(cmd)}")
 
         try:
+            # Remove FIREBIRD do ambiente para evitar conflito com gbak do sistema
+            # O firebird_loader define FIREBIRD apontando para _MEIPASS, mas o gbak
+            # instalado precisa usar seu próprio diretório para encontrar firebird.msg
+            env = os.environ.copy()
+            env.pop('FIREBIRD', None)
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=BACKUP_TIMEOUT,
+                env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
@@ -317,11 +324,16 @@ class BackupEngine:
         ]
 
         try:
+            # Remove FIREBIRD do ambiente para gbak usar seu próprio diretório
+            env = os.environ.copy()
+            env.pop('FIREBIRD', None)
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=60,
+                env=env,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
