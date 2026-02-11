@@ -249,7 +249,9 @@ class BackupEngine:
 
         # Cria diretório temporário
         temp_dir = FileUtils.get_temp_directory()
-        temp_dir.mkdir(exist_ok=True)
+        temp_dir.mkdir(parents=True, exist_ok=True)
+
+        self.logger.debug(f"Diretório temp: {temp_dir} (existe: {temp_dir.exists()})")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         fbk_filename = f"backup_{timestamp}{BACKUP_EXTENSION}"
@@ -267,11 +269,12 @@ class BackupEngine:
         self.logger.debug(f"Executando: {cmd}")
 
         try:
-            # Remove FIREBIRD do ambiente para evitar conflito com gbak do sistema
-            # O firebird_loader define FIREBIRD apontando para _MEIPASS, mas o gbak
-            # instalado precisa usar seu próprio diretório para encontrar firebird.msg
+            # Configura ambiente para gbak
+            # Define FIREBIRD para o diretório do gbak instalado (não o embutido)
             env = os.environ.copy()
-            env.pop('FIREBIRD', None)
+            gbak_dir = str(Path(gbak_path).parent.parent)  # Ex: C:\Program Files (x86)\Firebird\Firebird_2_5
+            env['FIREBIRD'] = gbak_dir
+            self.logger.debug(f"FIREBIRD={gbak_dir}")
 
             result = subprocess.run(
                 cmd,
