@@ -61,8 +61,9 @@ pyinstaller topbackup.spec
 
 - Firebird library (fbclient.dll) must be loaded before importing `fdb` module
 - The app uses `assets/firebird/x64/` or `x86/` based on Python architecture
-- gbak command uses `-g -ig -pas` flags for complete backup compatibility
+- gbak command usa apenas `-b -v -user -pas` (flags `-g -ig` removidos por causar problemas)
 - APScheduler timezone is `America/Sao_Paulo`
+- Diretório temp do backup: `C:\TOPBACKUP\temp` (não usa %TEMP% do sistema)
 
 ---
 
@@ -160,7 +161,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ### 🔄 Em Progresso
 
-- (nenhum item no momento)
+- **Bug gbak "bad parameters on attach or create database"** - Backup via TopBackup falha, mas comando manual idêntico funciona. Várias correções aplicadas, aguardando teste final. Ver seção "Notas para Próxima Sessão".
 
 ### 📋 Pendente / Futuro
 
@@ -184,12 +185,38 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Histórico de Sessões
 
-### 2026-02-11
-- **v1.0.6**: Normaliza caminhos do banco e gbak para formato Windows (barras invertidas) - gbak 2.5 não aceita barras normais
-- **v1.0.5**: Corrigido erro de "firebird.msg not found" ao executar gbak - variável FIREBIRD agora é removida do ambiente do subprocess para evitar conflito entre fbclient embutido e gbak do sistema instalado
+### 2026-02-11 (sessão 2 - tarde)
+**Problema investigado:** gbak falha com "bad parameters on attach or create database" quando executado pelo TopBackup, mas funciona manualmente no CMD.
+
+**Correções aplicadas (todas na v1.0.5):**
+1. Corrigido erro "firebird.msg not found" - remove variável FIREBIRD do ambiente do subprocess
+2. Normaliza caminhos com `os.path.normpath()` para barras invertidas no Windows
+3. Alterado diretório temp de `%TEMP%\1\topbackup_temp` (PyInstaller) para `C:\TOPBACKUP\temp`
+4. Usa `shell=True` com aspas nos caminhos do comando gbak
+5. Ambiente mínimo para subprocess (apenas SYSTEMROOT, PATH, FIREBIRD, TEMP, TMP)
+6. Removidos flags `-g -ig` do comando gbak
+
+**Testes realizados:**
+- ✅ gbak manual no CMD como admin: FUNCIONA
+- ✅ gbak manual de C:\TOPBACKUP: FUNCIONA
+- ❌ TopBackup executando gbak: FALHA (mesmo comando)
+
+**Hipóteses restantes (se ainda falhar no próximo teste):**
+- Conflito de DLLs (fbclient.dll 64-bit carregado pelo Python vs gbak 32-bit)
+- Necessidade de executar TopBackup como Administrador
+- Alguma configuração específica do Firebird/ambiente nesse cliente
+
+**Arquivos modificados:**
+- `src/core/backup_engine.py` - execução do gbak
+- `src/utils/file_utils.py` - diretório temp
+- `src/version.py` - mantido em 1.0.5
+
+**Último commit:** `0969697` - "fix: Remove flags -g -ig do gbak"
+
+### 2026-02-11 (sessão 1 - manhã)
 - **v1.0.4**: Corrigido bug onde barra de progresso ficava carregando infinitamente após backup automático (agora esconde ao finalizar)
 
-### 2026-02-11
+### 2026-02-11 (anterior)
 - **v1.0.3**: Removidos pop-ups de atualização (versão disponível, download, erro) - mantido apenas no log
 - Ajustado intervalo de verificação de atualizações de 6h para 10min (para testes)
 - Adicionado campo CAMINHO_DESTINO2 na tabela LOG_BACKUPS para registrar ambos os destinos
@@ -204,7 +231,32 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Notas para Próxima Sessão
 
-Ao retomar o desenvolvimento:
+### PRIORIDADE: Testar correção do gbak
+
+1. **Copiar `dist/TopBackup.exe` para o cliente** (ARMAZEM SANTO ANTONIO)
+2. **Executar backup e verificar log**
+3. **Se funcionar:**
+   - Lançar versão no MySQL:
+   ```sql
+   INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+   VALUES ('1.0.5', 'https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.exe',
+           'Correções no backup gbak', 'N')
+   ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD), CHANGELOG = VALUES(CHANGELOG);
+   ```
+   - Mover bug de "Em Progresso" para resolvido
+
+4. **Se ainda falhar, investigar:**
+   - Executar TopBackup como Administrador
+   - Verificar se há diferença de arquitetura (Python 64-bit vs gbak 32-bit)
+   - Testar em outro cliente para ver se é específico desse ambiente
+   - Considerar usar gbak 64-bit se disponível
+
+### Contexto do Bug
+- Comando idêntico funciona no CMD mas falha no subprocess do Python
+- Erro: "bad parameters on attach or create database"
+- Todas as variáveis parecem corretas (temp existe, FIREBIRD correto, caminhos normalizados)
+
+### Rotina Normal
 1. Ler este arquivo para contexto
 2. Verificar seção "Em Progresso" para tarefas iniciadas
 3. Consultar "Pendente" para próximas features
