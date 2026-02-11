@@ -320,12 +320,8 @@ class AppController:
             self._backup_progress_callback(message)
 
     def _on_update_available(self, versao: str, changelog: str):
-        """Callback para update disponível"""
-        if self._notification_callback:
-            self._notification_callback(
-                "Atualização Disponível",
-                f"Versão {versao} disponível"
-            )
+        """Callback para update disponível - apenas log, sem pop-up"""
+        self.logger.info(f"Atualização disponível: versão {versao}")
 
     def _check_and_apply_update(self):
         """Verifica, baixa e aplica atualização automaticamente"""
@@ -341,24 +337,13 @@ class AppController:
                     return
 
                 self.logger.info(f"Atualização encontrada: {version_info.versao}")
-
-                # Notifica início do download
-                if self._notification_callback:
-                    self._notification_callback(
-                        "Atualizando",
-                        f"Baixando versão {version_info.versao}..."
-                    )
+                self.logger.info(f"Iniciando download da versão {version_info.versao}...")
 
                 # Baixa a atualização
                 success, result = self._update_checker.download_update()
 
                 if not success:
-                    self.logger.error(f"Falha no download: {result}")
-                    if self._notification_callback:
-                        self._notification_callback(
-                            "Erro na Atualização",
-                            f"Falha no download: {result}"
-                        )
+                    self.logger.error(f"Falha no download da atualização: {result}")
                     return
 
                 self.logger.info(f"Download concluído: {result}")
@@ -367,20 +352,10 @@ class AppController:
                 success, msg = self._update_checker.apply_update(result)
 
                 if success:
-                    self.logger.info("Atualização aplicada - reiniciando...")
-                    if self._notification_callback:
-                        self._notification_callback(
-                            "Atualização Concluída",
-                            "Reiniciando aplicativo..."
-                        )
+                    self.logger.info("Atualização aplicada com sucesso - reiniciando aplicativo...")
                     # O apply_update já inicia o script de atualização que reinicia o app
                 else:
-                    self.logger.error(f"Falha ao aplicar: {msg}")
-                    if self._notification_callback:
-                        self._notification_callback(
-                            "Erro na Atualização",
-                            msg
-                        )
+                    self.logger.error(f"Falha ao aplicar atualização: {msg}")
 
             except Exception as e:
                 self.logger.error(f"Erro na atualização automática: {e}")

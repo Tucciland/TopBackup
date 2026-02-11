@@ -68,8 +68,8 @@ pyinstaller topbackup.spec
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.0
-**Última Atualização:** 2026-02-10
+**Versão Atual:** 1.0.3
+**Última Atualização:** 2026-02-11
 
 ### ✅ Implementado e Funcionando
 
@@ -132,6 +132,7 @@ pyinstaller topbackup.spec
 ## Histórico de Sessões
 
 ### 2026-02-11
+- **v1.0.3**: Removidos pop-ups de atualização (versão disponível, download, erro) - mantido apenas no log
 - Ajustado intervalo de verificação de atualizações de 6h para 10min (para testes)
 - Adicionado campo CAMINHO_DESTINO2 na tabela LOG_BACKUPS para registrar ambos os destinos
 - Atualizado modelo LogBackup, MySQLClient (insert/update/get) e BackupEngine
