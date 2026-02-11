@@ -185,6 +185,11 @@ class AppController:
         self._set_state(AppState.RUNNING)
         self.logger.info("Aplicativo iniciado")
 
+        # Verifica atualizações na inicialização
+        if self._update_checker and self.settings.app.auto_update:
+            self.logger.info("Verificando atualizações na inicialização...")
+            self._check_and_apply_update()
+
     def stop(self):
         """Para o aplicativo"""
         if self._scheduler:
@@ -305,8 +310,9 @@ class AppController:
             self._mysql.update_empresa_interacao(self.settings.app.empresa_id)
             self.logger.debug("DATA_ULTIMA_INTERACAO atualizada na verificação de updates")
 
-        if self._update_checker:
-            self._update_checker.check_for_updates()
+        # Verifica e aplica atualização automaticamente
+        if self._update_checker and self.settings.app.auto_update:
+            self._check_and_apply_update()
 
     def _on_backup_progress(self, message: str):
         """Callback para progresso do backup"""
@@ -320,6 +326,68 @@ class AppController:
                 "Atualização Disponível",
                 f"Versão {versao} disponível"
             )
+
+    def _check_and_apply_update(self):
+        """Verifica, baixa e aplica atualização automaticamente"""
+        import threading
+
+        def do_update():
+            try:
+                # Verifica se há atualização
+                has_update, version_info = self._update_checker.check_for_updates()
+
+                if not has_update:
+                    self.logger.info("Nenhuma atualização disponível")
+                    return
+
+                self.logger.info(f"Atualização encontrada: {version_info.versao}")
+
+                # Notifica início do download
+                if self._notification_callback:
+                    self._notification_callback(
+                        "Atualizando",
+                        f"Baixando versão {version_info.versao}..."
+                    )
+
+                # Baixa a atualização
+                success, result = self._update_checker.download_update()
+
+                if not success:
+                    self.logger.error(f"Falha no download: {result}")
+                    if self._notification_callback:
+                        self._notification_callback(
+                            "Erro na Atualização",
+                            f"Falha no download: {result}"
+                        )
+                    return
+
+                self.logger.info(f"Download concluído: {result}")
+
+                # Aplica a atualização
+                success, msg = self._update_checker.apply_update(result)
+
+                if success:
+                    self.logger.info("Atualização aplicada - reiniciando...")
+                    if self._notification_callback:
+                        self._notification_callback(
+                            "Atualização Concluída",
+                            "Reiniciando aplicativo..."
+                        )
+                    # O apply_update já inicia o script de atualização que reinicia o app
+                else:
+                    self.logger.error(f"Falha ao aplicar: {msg}")
+                    if self._notification_callback:
+                        self._notification_callback(
+                            "Erro na Atualização",
+                            msg
+                        )
+
+            except Exception as e:
+                self.logger.error(f"Erro na atualização automática: {e}")
+
+        # Executa em thread separada para não bloquear a UI
+        thread = threading.Thread(target=do_update, daemon=True)
+        thread.start()
 
     # ============ INFORMAÇÕES ============
 
