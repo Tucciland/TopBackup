@@ -66,6 +66,59 @@ pyinstaller topbackup.spec
 
 ---
 
+## Processo de Atualização (Release)
+
+### Passos para lançar uma nova versão:
+
+1. **Fazer os ajustes no código**
+   - Implementar correções/features necessárias
+
+2. **Atualizar a versão**
+   - Editar `src/version.py` e incrementar `VERSION` (ex: "1.0.4" → "1.0.5")
+
+3. **Fazer o build do executável**
+   ```bash
+   cd TopBackup
+   ..\venv\Scripts\pyinstaller.exe topbackup.spec --noconfirm
+   ```
+   - O executável será gerado em `dist/TopBackup.exe`
+
+4. **Commit e push para o GitHub**
+   ```bash
+   git add .
+   git commit -m "release: vX.X.X - descrição das mudanças"
+   git push
+   ```
+
+5. **Inserir a nova versão no banco MySQL (VERSAO_APP)**
+   ```sql
+   INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+   VALUES ('X.X.X', 'URL_DOWNLOAD_GITHUB', 'Descrição das mudanças', 'N')
+   ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD), CHANGELOG = VALUES(CHANGELOG);
+   ```
+
+### URL de Download (IMPORTANTE)
+
+A URL de download é **sempre a mesma** para todas as versões, pois aponta diretamente para o arquivo no repositório Git:
+
+```
+https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.exe
+```
+
+- O arquivo `dist/TopBackup.exe` é sobrescrito a cada build e push
+- Não criar URLs diferentes para cada versão
+- O token de acesso GitHub está configurado no banco MySQL
+- Nunca commitar o token no código fonte (GitHub bloqueia)
+
+### Fluxo de Atualização Automática
+
+1. App verifica tabela `VERSAO_APP` no MySQL
+2. Compara versão local (`src/version.py`) com a mais recente no banco
+3. Se houver versão mais nova, baixa de `URL_DOWNLOAD`
+4. Aplica atualização e reinicia o app
+
+---
+
 ## Status do Desenvolvimento
 
 **Versão Atual:** 1.0.4
