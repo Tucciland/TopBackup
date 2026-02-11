@@ -259,8 +259,9 @@ class BackupEngine:
 
         # Monta comando gbak - backup completo
         # Usa aspas nos caminhos para compatibilidade com gbak
+        # Removidos -g -ig que podem causar problemas em algumas versões
         cmd = (
-            f'"{gbak_path}" -b -v -g -ig '
+            f'"{gbak_path}" -b -v '
             f'-user {self.settings.firebird.user} '
             f'-pas {self.settings.firebird.password} '
             f'"{db_path}" "{fbk_path}"'
