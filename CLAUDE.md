@@ -121,7 +121,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.6
+**Versão Atual:** 1.0.5
 **Última Atualização:** 2026-02-11
 
 ### ✅ Implementado e Funcionando
