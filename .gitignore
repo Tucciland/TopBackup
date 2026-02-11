@@ -6,7 +6,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+# dist/ - comentado para permitir upload de executáveis
 downloads/
 eggs/
 .eggs/
