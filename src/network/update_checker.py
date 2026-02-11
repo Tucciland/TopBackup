@@ -116,8 +116,8 @@ class UpdateChecker:
         """
         Aplica a atualização baixada
 
-        Este método prepara os arquivos e inicia o script de atualização.
-        O script real de atualização é executado em scripts/update.bat
+        Este método prepara os arquivos e cria/executa o script de atualização.
+        O script é gerado dinamicamente para não depender de arquivos externos.
 
         Args:
             update_path: Caminho do arquivo de atualização
@@ -137,6 +137,7 @@ class UpdateChecker:
             # Diretório do executável atual
             if getattr(sys, 'frozen', False):
                 app_dir = os.path.dirname(sys.executable)
+                current_exe = sys.executable
             else:
                 return False, "Atualização automática só funciona no executável"
 
@@ -147,11 +148,55 @@ class UpdateChecker:
             new_exe = os.path.join(update_dir, "TopBackup_new.exe")
             shutil.copy2(update_path, new_exe)
 
-            # Prepara script de atualização
-            script_path = os.path.join(app_dir, "scripts", "update.bat")
+            # Cria script de atualização dinamicamente
+            script_content = f'''@echo off
+chcp 65001 >nul
+echo ==========================================
+echo    TopBackup - Atualizacao Automatica
+echo ==========================================
+echo.
 
-            if not os.path.exists(script_path):
-                return False, "Script de atualização não encontrado"
+set "NEW_EXE={new_exe}"
+set "CURRENT_EXE={current_exe}"
+set "BACKUP_EXE={os.path.join(update_dir, "TopBackup_backup.exe")}"
+
+echo Aguardando aplicativo fechar...
+timeout /t 3 /nobreak >nul
+
+echo Parando servico (se existir)...
+net stop TopBackupService 2>nul
+
+echo Encerrando processo...
+taskkill /f /im TopBackup.exe 2>nul
+timeout /t 2 /nobreak >nul
+
+echo Criando backup...
+if exist "%CURRENT_EXE%" copy /y "%CURRENT_EXE%" "%BACKUP_EXE%" >nul
+
+echo Instalando nova versao...
+copy /y "%NEW_EXE%" "%CURRENT_EXE%"
+if %ERRORLEVEL% NEQ 0 (
+    echo ERRO: Falha ao copiar. Restaurando backup...
+    copy /y "%BACKUP_EXE%" "%CURRENT_EXE%"
+    pause
+    exit /b 1
+)
+
+echo Iniciando nova versao...
+start "" "%CURRENT_EXE%"
+
+echo Limpando arquivos temporarios...
+del /q "%NEW_EXE%" 2>nul
+
+echo.
+echo Atualizacao concluida!
+timeout /t 3 >nul
+exit /b 0
+'''
+
+            script_path = os.path.join(update_dir, "update.bat")
+            with open(script_path, 'w', encoding='utf-8') as f:
+                f.write(script_content)
 
             # Inicia script de atualização
             import subprocess
