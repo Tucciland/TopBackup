@@ -61,9 +61,10 @@ pyinstaller topbackup.spec
 
 - Firebird library (fbclient.dll) must be loaded before importing `fdb` module
 - The app uses `assets/firebird/x64/` or `x86/` based on Python architecture
-- gbak command usa apenas `-b -v -user -pas` (flags `-g -ig` removidos por causar problemas)
+- **Comando gbak simplificado:** `gbak -b -user SYSDBA -pass masterkey banco destino` (sem -v, usando lista de argumentos)
 - APScheduler timezone is `America/Sao_Paulo`
 - Diretório temp do backup: `C:\TOPBACKUP\temp` (não usa %TEMP% do sistema)
+- Caminho padrão Firebird: `C:\Program Files (x86)\Firebird\Firebird_2_5`
 
 ---
 
@@ -93,9 +94,8 @@ pyinstaller topbackup.spec
 
 5. **Inserir a nova versão no banco MySQL (VERSAO_APP)**
    ```sql
-   INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
-   VALUES ('X.X.X', 'URL_DOWNLOAD_GITHUB', 'Descrição das mudanças', 'N')
-   ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD), CHANGELOG = VALUES(CHANGELOG);
+   INSERT INTO VERSAO_APP (VERSAO, DATA_LANCAMENTO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+   VALUES ('X.X.X', NOW(), 'URL_DOWNLOAD_GITHUB', 'Descrição das mudanças', 'N');
    ```
 
 ### URL de Download (IMPORTANTE)
@@ -123,7 +123,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 ## Status do Desenvolvimento
 
 **Versão Atual:** 1.0.5
-**Última Atualização:** 2026-02-11
+**Última Atualização:** 2026-02-12
 
 ### ✅ Implementado e Funcionando
 
@@ -143,6 +143,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 - Setup Wizard (4 etapas: Firebird, MySQL, FTP, Resumo)
 - System Tray com minimize/restore
 - Diálogos: progresso, logs, configurações, agendas
+- **Seleção de pasta Firebird** no Setup Wizard e Configurações
 
 **Serviço Windows:**
 - Instalação/desinstalação como serviço
@@ -151,7 +152,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 **Rede:**
 - FTP Client (upload de backups, modo passivo, retry)
-- Update Checker (verificação a cada 6h, SHA256)
+- Update Checker (verificação a cada 10min)
 
 **Infraestrutura:**
 - Logger rotativo (5 backups de 5MB)
@@ -161,7 +162,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ### 🔄 Em Progresso
 
-- **Bug gbak "bad parameters on attach or create database"** - Backup via TopBackup falha, mas comando manual idêntico funciona. Várias correções aplicadas, aguardando teste final. Ver seção "Notas para Próxima Sessão".
+(Nenhum item no momento)
 
 ### 📋 Pendente / Futuro
 
@@ -185,10 +186,39 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Histórico de Sessões
 
+### 2026-02-12
+**Bug do gbak RESOLVIDO!** Backup funcionando corretamente no cliente ARMAZEM SANTO ANTONIO.
+
+**Correções aplicadas (v1.0.5):**
+1. **Comando gbak simplificado** - Usa lista de argumentos ao invés de string com shell
+   - Antes: `f'"{gbak}" -b -v -user {user} -pas {pass} "{db}" "{fbk}"'` com `shell=True`
+   - Agora: `[gbak, "-b", "-user", user, "-pass", password, db, fbk]` sem shell
+2. **Removido -v (verbose)** - Não precisa de output detalhado
+3. **Usando -pass** ao invés de -pas (compatibilidade)
+4. **Removido ambiente complexo** - Sem variáveis FIREBIRD, TEMP customizadas
+5. **Validação simplificada** - Removido `gbak -z`, só verifica tamanho do arquivo
+
+**Nova funcionalidade: Seleção de pasta Firebird**
+- Setup Wizard: Campo "Pasta do Firebird" ao invés de selecionar gbak.exe diretamente
+- Configurações (aba Conexões): Mesmo campo adicionado
+- Padrão: `C:\Program Files (x86)\Firebird\Firebird_2_5`
+- gbak.exe detectado automaticamente em `pasta/bin/gbak.exe`
+- Status visual (verde/laranja) mostrando se gbak foi encontrado
+
+**Arquivos modificados:**
+- `src/core/backup_engine.py` - Comando gbak simplificado, validação simples
+- `src/gui/setup_wizard.py` - Campo pasta Firebird
+- `src/gui/dialogs.py` - Campo pasta Firebird nas configurações
+- `src/config/constants.py` - Caminho x86 como padrão
+
+**Commit:** `9cd4141` - "fix: Simplifica comando gbak e adiciona seleção de pasta Firebird"
+
+**Versão publicada no MySQL:** VERSAO_APP ID=7, v1.0.5
+
 ### 2026-02-11 (sessão 2 - tarde)
 **Problema investigado:** gbak falha com "bad parameters on attach or create database" quando executado pelo TopBackup, mas funciona manualmente no CMD.
 
-**Correções aplicadas (todas na v1.0.5):**
+**Correções tentadas:**
 1. Corrigido erro "firebird.msg not found" - remove variável FIREBIRD do ambiente do subprocess
 2. Normaliza caminhos com `os.path.normpath()` para barras invertidas no Windows
 3. Alterado diretório temp de `%TEMP%\1\topbackup_temp` (PyInstaller) para `C:\TOPBACKUP\temp`
@@ -196,22 +226,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 5. Ambiente mínimo para subprocess (apenas SYSTEMROOT, PATH, FIREBIRD, TEMP, TMP)
 6. Removidos flags `-g -ig` do comando gbak
 
-**Testes realizados:**
-- ✅ gbak manual no CMD como admin: FUNCIONA
-- ✅ gbak manual de C:\TOPBACKUP: FUNCIONA
-- ❌ TopBackup executando gbak: FALHA (mesmo comando)
-
-**Hipóteses restantes (se ainda falhar no próximo teste):**
-- Conflito de DLLs (fbclient.dll 64-bit carregado pelo Python vs gbak 32-bit)
-- Necessidade de executar TopBackup como Administrador
-- Alguma configuração específica do Firebird/ambiente nesse cliente
-
-**Arquivos modificados:**
-- `src/core/backup_engine.py` - execução do gbak
-- `src/utils/file_utils.py` - diretório temp
-- `src/version.py` - mantido em 1.0.5
-
-**Último commit:** `0969697` - "fix: Remove flags -g -ig do gbak"
+**Resultado:** Ainda falhava. Resolvido na sessão de 2026-02-12.
 
 ### 2026-02-11 (sessão 1 - manhã)
 - **v1.0.4**: Corrigido bug onde barra de progresso ficava carregando infinitamente após backup automático (agora esconde ao finalizar)
@@ -231,33 +246,14 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Notas para Próxima Sessão
 
-### PRIORIDADE: Testar correção do gbak
-
-1. **Copiar `dist/TopBackup.exe` para o cliente** (ARMAZEM SANTO ANTONIO)
-2. **Executar backup e verificar log**
-3. **Se funcionar:**
-   - Lançar versão no MySQL:
-   ```sql
-   INSERT INTO VERSAO_APP (VERSAO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
-   VALUES ('1.0.5', 'https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.exe',
-           'Correções no backup gbak', 'N')
-   ON DUPLICATE KEY UPDATE URL_DOWNLOAD = VALUES(URL_DOWNLOAD), CHANGELOG = VALUES(CHANGELOG);
-   ```
-   - Mover bug de "Em Progresso" para resolvido
-
-4. **Se ainda falhar, investigar:**
-   - Executar TopBackup como Administrador
-   - Verificar se há diferença de arquitetura (Python 64-bit vs gbak 32-bit)
-   - Testar em outro cliente para ver se é específico desse ambiente
-   - Considerar usar gbak 64-bit se disponível
-
-### Contexto do Bug
-- Comando idêntico funciona no CMD mas falha no subprocess do Python
-- Erro: "bad parameters on attach or create database"
-- Todas as variáveis parecem corretas (temp existe, FIREBIRD correto, caminhos normalizados)
-
 ### Rotina Normal
 1. Ler este arquivo para contexto
 2. Verificar seção "Em Progresso" para tarefas iniciadas
 3. Consultar "Pendente" para próximas features
 4. Atualizar "Histórico de Sessões" ao final
+
+### Possíveis Melhorias
+- Adicionar testes automatizados (pytest)
+- Implementar funcionalidade de Restore
+- Criar dashboard web para monitoramento central
+- Adicionar notificações por email em caso de falha
