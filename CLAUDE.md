@@ -122,7 +122,7 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.5
+**Versão Atual:** 1.0.6
 **Última Atualização:** 2026-02-12
 
 ### ✅ Implementado e Funcionando
@@ -186,7 +186,23 @@ https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.
 
 ## Histórico de Sessões
 
-### 2026-02-12
+### 2026-02-12 (sessão 2 - tarde)
+**v1.0.6: App silencioso - Remove notificações de backup**
+
+- Removido bloco de notificação (`_notification_callback`) após backup em `app_controller.py`
+- Pop-ups de "Backup Concluído" e "Falha no Backup" não aparecem mais
+- Log continua registrando normalmente via `BackupEngine`
+- Demais avisos do sistema permanecem inalterados (erros de inicialização, configurações salvas, etc.)
+
+**Arquivos modificados:**
+- `src/core/app_controller.py` - Removido bloco de notificação (linhas 252-263)
+- `src/version.py` - Versão atualizada para 1.0.6
+
+**Commit:** `7d8b18c` - "release: v1.0.6 - Remove notificações de backup (app silencioso)"
+
+**Versão publicada no MySQL:** VERSAO_APP ID=8, v1.0.6
+
+### 2026-02-12 (sessão 1 - manhã)
 **Bug do gbak RESOLVIDO!** Backup funcionando corretamente no cliente ARMAZEM SANTO ANTONIO.
 
 **Correções aplicadas (v1.0.5):**
