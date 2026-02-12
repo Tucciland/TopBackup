@@ -249,18 +249,8 @@ class AppController:
             if result.success and self.settings.backup.backup_remoto:
                 self._upload_ftp(result)
 
-            # Notifica resultado
-            if self._notification_callback:
-                if result.success:
-                    self._notification_callback(
-                        "Backup Concluído",
-                        f"{result.arquivo} - {result.tamanho_formatado}"
-                    )
-                else:
-                    self._notification_callback(
-                        "Falha no Backup",
-                        result.message
-                    )
+            # Notificação de backup removida - app silencioso (v1.0.6)
+            # O log já registra automaticamente via BackupEngine
 
             return result
 
