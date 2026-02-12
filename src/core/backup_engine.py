@@ -242,52 +242,33 @@ class BackupEngine:
         if not os.path.exists(db_path):
             raise BackupError(f"Banco de dados não encontrado: {db_path}")
 
-        # Normaliza caminhos para Windows (gbak não aceita barras normais)
-        if os.name == 'nt':
-            db_path = os.path.normpath(db_path)
-            gbak_path = os.path.normpath(gbak_path)
-
         # Cria diretório temporário
         temp_dir = FileUtils.get_temp_directory()
         temp_dir.mkdir(parents=True, exist_ok=True)
-
-        self.logger.debug(f"Diretório temp: {temp_dir} (existe: {temp_dir.exists()})")
 
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         fbk_filename = f"backup_{timestamp}{BACKUP_EXTENSION}"
         fbk_path = temp_dir / fbk_filename
 
-        # Monta comando gbak - backup completo
-        # Usa aspas nos caminhos para compatibilidade com gbak
-        # Removidos -g -ig que podem causar problemas em algumas versões
-        cmd = (
-            f'"{gbak_path}" -b -v '
-            f'-user {self.settings.firebird.user} '
-            f'-pas {self.settings.firebird.password} '
-            f'"{db_path}" "{fbk_path}"'
-        )
+        # Comando gbak simples - igual ao batch que funciona
+        # gbak -b -user sysdba -pass masterkey banco destino
+        cmd = [
+            gbak_path,
+            "-b",
+            "-user", self.settings.firebird.user,
+            "-pass", self.settings.firebird.password,
+            db_path,
+            str(fbk_path)
+        ]
 
-        self.logger.debug(f"Executando: {cmd}")
+        self.logger.debug(f"Executando: {' '.join(cmd)}")
 
         try:
-            # Configura ambiente mínimo para gbak (evita herdar DLLs do processo)
-            gbak_dir = str(Path(gbak_path).parent.parent)
-            env = {
-                'SYSTEMROOT': os.environ.get('SYSTEMROOT', r'C:\Windows'),
-                'PATH': os.environ.get('PATH', ''),
-                'FIREBIRD': gbak_dir,
-                'TEMP': str(temp_dir),
-                'TMP': str(temp_dir),
-            }
-            self.logger.debug(f"FIREBIRD={gbak_dir}")
-
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=BACKUP_TIMEOUT,
-                env=env,
-                shell=True,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
 
@@ -305,7 +286,7 @@ class BackupEngine:
 
     def _validate_backup(self, fbk_path: str) -> bool:
         """
-        Valida integridade do backup verificando tamanho e opcionalmente gbak -z
+        Valida integridade do backup verificando apenas tamanho
 
         Args:
             fbk_path: Caminho do arquivo .fbk
@@ -313,10 +294,7 @@ class BackupEngine:
         Returns:
             True se válido
         """
-        if not self.settings.backup.verificar_backup:
-            return True
-
-        # Validação básica: verifica se arquivo existe e tem tamanho razoável
+        # Validação simples: verifica se arquivo existe e tem tamanho razoável
         if not os.path.exists(fbk_path):
             raise BackupError("Arquivo de backup não encontrado")
 
@@ -324,40 +302,8 @@ class BackupEngine:
         if file_size < 1024:  # Menos de 1KB é suspeito
             raise BackupError(f"Arquivo de backup muito pequeno: {file_size} bytes")
 
-        # Tenta validar com gbak -z, mas não falha se houver erro de mensagens
-        gbak_path = self.settings.firebird.gbak_path
-        if os.name == 'nt':
-            gbak_path = os.path.normpath(gbak_path)
-
-        cmd = f'"{gbak_path}" -z "{fbk_path}"'
-
-        try:
-            # Remove FIREBIRD do ambiente para gbak usar seu próprio diretório
-            env = os.environ.copy()
-            env.pop('FIREBIRD', None)
-
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,
-                env=env,
-                shell=True,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
-            )
-
-            # Ignora erros de "message file not found" - backup ainda é válido
-            if result.returncode != 0:
-                stderr = result.stderr or ""
-                if "message file" not in stderr.lower():
-                    raise BackupError(f"Backup inválido: {stderr}")
-                # Se for só erro de mensagem, log warning mas continua
-                self.logger.warning(f"gbak warning (ignorado): {stderr[:100]}")
-
-            return True
-
-        except subprocess.TimeoutExpired:
-            raise BackupError("Timeout na validação do backup")
+        self.logger.debug(f"Backup validado: {file_size} bytes")
+        return True
 
     def _compress_backup(
         self,

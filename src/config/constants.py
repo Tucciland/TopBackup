@@ -38,10 +38,10 @@ TIPO_VERSIONADO = 'V'  # CNPJ_YYYYMMDD_HHMMSS.zip
 TIPO_SEMANAL = 'S'     # CNPJ_SEG.zip
 TIPO_UNICO = 'U'       # CNPJ.zip
 
-# Caminhos padrão do Firebird
+# Caminhos padrão do Firebird (x86 primeiro pois é mais comum)
 FIREBIRD_PATHS = [
-    r"C:\Program Files\Firebird\Firebird_2_5\bin\gbak.exe",
     r"C:\Program Files (x86)\Firebird\Firebird_2_5\bin\gbak.exe",
+    r"C:\Program Files\Firebird\Firebird_2_5\bin\gbak.exe",
     r"C:\Firebird\Firebird_2_5\bin\gbak.exe",
 ]
 

@@ -464,9 +464,35 @@ class SettingsDialog(ctk.CTkToplevel):
         fb_inner = ctk.CTkFrame(fb_frame, fg_color="transparent")
         fb_inner.pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkLabel(fb_inner, text="Banco:").pack(anchor="w")
-        self.fb_db_entry = ctk.CTkEntry(fb_inner, width=350)
-        self.fb_db_entry.pack(anchor="w")
+        # Pasta do Firebird
+        ctk.CTkLabel(fb_inner, text="Pasta do Firebird:").pack(anchor="w")
+        fb_folder_frame = ctk.CTkFrame(fb_inner, fg_color="transparent")
+        fb_folder_frame.pack(anchor="w", fill="x")
+        self.fb_folder_entry = ctk.CTkEntry(fb_folder_frame, width=300)
+        self.fb_folder_entry.pack(side="left")
+        ctk.CTkButton(
+            fb_folder_frame,
+            text="...",
+            width=40,
+            command=self._browse_firebird_folder
+        ).pack(side="left", padx=5)
+
+        # Label mostrando onde fica o gbak
+        self.gbak_status_label = ctk.CTkLabel(fb_inner, text="", text_color="gray")
+        self.gbak_status_label.pack(anchor="w")
+
+        # Banco de dados
+        ctk.CTkLabel(fb_inner, text="Banco de Dados:").pack(anchor="w", pady=(5, 0))
+        fb_db_frame = ctk.CTkFrame(fb_inner, fg_color="transparent")
+        fb_db_frame.pack(anchor="w", fill="x")
+        self.fb_db_entry = ctk.CTkEntry(fb_db_frame, width=300)
+        self.fb_db_entry.pack(side="left")
+        ctk.CTkButton(
+            fb_db_frame,
+            text="...",
+            width=40,
+            command=self._browse_database
+        ).pack(side="left", padx=5)
 
         # MySQL
         mysql_frame = ctk.CTkFrame(tab)
@@ -485,6 +511,52 @@ class SettingsDialog(ctk.CTkToplevel):
         self.mysql_host_entry = ctk.CTkEntry(mysql_inner, width=350)
         self.mysql_host_entry.pack(anchor="w")
 
+    def _browse_firebird_folder(self):
+        """Abre diálogo para selecionar pasta do Firebird"""
+        import os
+        folder = filedialog.askdirectory(
+            title="Selecione a pasta do Firebird"
+        )
+        if folder:
+            self.fb_folder_entry.delete(0, "end")
+            self.fb_folder_entry.insert(0, folder)
+            self._update_gbak_status()
+
+    def _browse_database(self):
+        """Abre diálogo para selecionar banco de dados"""
+        path = filedialog.askopenfilename(
+            title="Selecione o banco de dados",
+            filetypes=[("Firebird Database", "*.fdb *.gdb"), ("Todos", "*.*")]
+        )
+        if path:
+            self.fb_db_entry.delete(0, "end")
+            self.fb_db_entry.insert(0, path)
+
+    def _update_gbak_status(self):
+        """Atualiza status do gbak baseado na pasta do Firebird"""
+        import os
+        fb_folder = self.fb_folder_entry.get()
+        if fb_folder:
+            gbak_path = os.path.join(fb_folder, "bin", "gbak.exe")
+            if os.path.exists(gbak_path):
+                self.gbak_status_label.configure(
+                    text=f"gbak.exe encontrado",
+                    text_color="green"
+                )
+            else:
+                self.gbak_status_label.configure(
+                    text=f"gbak.exe não encontrado em bin/",
+                    text_color="orange"
+                )
+        else:
+            self.gbak_status_label.configure(text="", text_color="gray")
+
+    def _get_gbak_path(self) -> str:
+        """Retorna caminho do gbak.exe baseado na pasta do Firebird"""
+        import os
+        fb_folder = self.fb_folder_entry.get()
+        return os.path.join(fb_folder, "bin", "gbak.exe")
+
     def _browse_folder(self, entry_widget):
         """Abre diálogo para selecionar pasta"""
         folder = filedialog.askdirectory(
@@ -497,6 +569,8 @@ class SettingsDialog(ctk.CTkToplevel):
 
     def _load_values(self):
         """Carrega valores atuais"""
+        import os
+
         # Geral
         self.start_min_var.set(self.settings.app.start_minimized)
         self.auto_update_var.set(self.settings.app.auto_update)
@@ -509,7 +583,13 @@ class SettingsDialog(ctk.CTkToplevel):
         self.verify_var.set(self.settings.backup.verificar_backup)
         self.prefix_var.set(self.settings.backup.prefixo_backup)
 
-        # Conexões
+        # Conexões - Extrai pasta do Firebird do gbak_path (2 níveis acima)
+        gbak_path = self.settings.firebird.gbak_path
+        if gbak_path:
+            fb_folder = os.path.dirname(os.path.dirname(gbak_path))
+            self.fb_folder_entry.insert(0, fb_folder)
+            self._update_gbak_status()
+
         self.fb_db_entry.insert(0, self.settings.firebird.database_path)
         self.mysql_host_entry.insert(0, self.settings.mysql.host)
 
@@ -527,7 +607,8 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings.backup.verificar_backup = self.verify_var.get()
         self.settings.backup.prefixo_backup = self.prefix_var.get()
 
-        # Conexões
+        # Conexões - Salva gbak_path baseado na pasta do Firebird
+        self.settings.firebird.gbak_path = self._get_gbak_path()
         self.settings.firebird.database_path = self.fb_db_entry.get()
         self.settings.mysql.host = self.mysql_host_entry.get()
 

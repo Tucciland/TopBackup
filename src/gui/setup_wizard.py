@@ -130,29 +130,45 @@ class SetupWizard(ctk.CTkToplevel):
             command=self._browse_database
         ).pack(side="left")
 
-        # Caminho do gbak
-        gbak_frame = ctk.CTkFrame(self.step1_frame, fg_color="transparent")
-        gbak_frame.pack(fill="x", pady=10)
+        # Pasta do Firebird
+        fb_folder_frame = ctk.CTkFrame(self.step1_frame, fg_color="transparent")
+        fb_folder_frame.pack(fill="x", pady=10)
 
-        ctk.CTkLabel(gbak_frame, text="Executável gbak.exe:").pack(anchor="w")
+        ctk.CTkLabel(fb_folder_frame, text="Pasta do Firebird:").pack(anchor="w")
 
-        gbak_input_frame = ctk.CTkFrame(gbak_frame, fg_color="transparent")
-        gbak_input_frame.pack(fill="x")
+        fb_folder_input = ctk.CTkFrame(fb_folder_frame, fg_color="transparent")
+        fb_folder_input.pack(fill="x")
 
-        self.gbak_path_entry = ctk.CTkEntry(gbak_input_frame, width=400)
-        self.gbak_path_entry.pack(side="left", padx=(0, 5))
+        self.fb_folder_entry = ctk.CTkEntry(fb_folder_input, width=400)
+        self.fb_folder_entry.pack(side="left", padx=(0, 5))
 
         ctk.CTkButton(
-            gbak_input_frame,
+            fb_folder_input,
             text="...",
             width=40,
-            command=self._browse_gbak
+            command=self._browse_firebird_folder
         ).pack(side="left")
 
-        # Auto-detectar gbak
-        auto_path = FileUtils.find_gbak_executable()
-        if auto_path:
-            self.gbak_path_entry.insert(0, auto_path)
+        # Caminho padrão do Firebird
+        default_fb_folder = r"C:\Program Files (x86)\Firebird\Firebird_2_5"
+        if os.path.exists(default_fb_folder):
+            self.fb_folder_entry.insert(0, default_fb_folder)
+        else:
+            # Tenta encontrar automaticamente
+            auto_path = FileUtils.find_gbak_executable()
+            if auto_path:
+                # Extrai pasta do Firebird (2 níveis acima do gbak.exe)
+                fb_folder = os.path.dirname(os.path.dirname(auto_path))
+                self.fb_folder_entry.insert(0, fb_folder)
+
+        # Label mostrando onde fica o gbak
+        self.gbak_path_label = ctk.CTkLabel(
+            fb_folder_frame,
+            text="",
+            text_color="gray"
+        )
+        self.gbak_path_label.pack(anchor="w", pady=(5, 0))
+        self._update_gbak_path_label()
 
         # Credenciais
         cred_frame = ctk.CTkFrame(self.step1_frame, fg_color="transparent")
@@ -401,7 +417,7 @@ class SetupWizard(ctk.CTkToplevel):
     def _validate_firebird(self) -> bool:
         """Valida configuração Firebird"""
         db_path = self.db_path_entry.get()
-        gbak_path = self.gbak_path_entry.get()
+        gbak_path = self._get_gbak_path()
 
         if not db_path:
             self.fb_status_label.configure(text="Informe o caminho do banco", text_color="red")
@@ -412,7 +428,7 @@ class SetupWizard(ctk.CTkToplevel):
             return False
 
         if not gbak_path or not os.path.exists(gbak_path):
-            self.fb_status_label.configure(text="gbak.exe não encontrado", text_color="red")
+            self.fb_status_label.configure(text="gbak.exe não encontrado na pasta do Firebird", text_color="red")
             return False
 
         return True
@@ -438,7 +454,7 @@ class SetupWizard(ctk.CTkToplevel):
 
         config = FirebirdConfig(
             database_path=self.db_path_entry.get(),
-            gbak_path=self.gbak_path_entry.get(),
+            gbak_path=self._get_gbak_path(),
             user=self.fb_user_entry.get(),
             password=self.fb_pass_entry.get()
         )
@@ -488,15 +504,38 @@ class SetupWizard(ctk.CTkToplevel):
             self.db_path_entry.delete(0, "end")
             self.db_path_entry.insert(0, path)
 
-    def _browse_gbak(self):
-        """Abre diálogo para selecionar gbak"""
-        path = filedialog.askopenfilename(
-            title="Selecione o gbak.exe",
-            filetypes=[("Executável", "*.exe"), ("Todos", "*.*")]
+    def _browse_firebird_folder(self):
+        """Abre diálogo para selecionar pasta do Firebird"""
+        path = filedialog.askdirectory(
+            title="Selecione a pasta do Firebird"
         )
         if path:
-            self.gbak_path_entry.delete(0, "end")
-            self.gbak_path_entry.insert(0, path)
+            self.fb_folder_entry.delete(0, "end")
+            self.fb_folder_entry.insert(0, path)
+            self._update_gbak_path_label()
+
+    def _update_gbak_path_label(self):
+        """Atualiza label mostrando caminho do gbak"""
+        fb_folder = self.fb_folder_entry.get()
+        if fb_folder:
+            gbak_path = os.path.join(fb_folder, "bin", "gbak.exe")
+            if os.path.exists(gbak_path):
+                self.gbak_path_label.configure(
+                    text=f"gbak.exe: {gbak_path}",
+                    text_color="green"
+                )
+            else:
+                self.gbak_path_label.configure(
+                    text=f"gbak.exe não encontrado em: {gbak_path}",
+                    text_color="orange"
+                )
+        else:
+            self.gbak_path_label.configure(text="", text_color="gray")
+
+    def _get_gbak_path(self) -> str:
+        """Retorna caminho do gbak.exe baseado na pasta do Firebird"""
+        fb_folder = self.fb_folder_entry.get()
+        return os.path.join(fb_folder, "bin", "gbak.exe")
 
     def _toggle_ftp_fields(self):
         """Habilita/desabilita campos FTP"""
@@ -517,7 +556,8 @@ class SetupWizard(ctk.CTkToplevel):
 FIREBIRD
 --------
 Banco: {self.db_path_entry.get()}
-Gbak: {self.gbak_path_entry.get()}
+Pasta Firebird: {self.fb_folder_entry.get()}
+Gbak: {self._get_gbak_path()}
 Usuário: {self.fb_user_entry.get()}
 
 MYSQL
@@ -547,7 +587,7 @@ Diretório: {self.ftp_path_entry.get()}
         # Firebird
         self.settings.firebird = FirebirdConfig(
             database_path=self.db_path_entry.get(),
-            gbak_path=self.gbak_path_entry.get(),
+            gbak_path=self._get_gbak_path(),
             user=self.fb_user_entry.get(),
             password=self.fb_pass_entry.get()
         )
