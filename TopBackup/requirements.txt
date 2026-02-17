@@ -1,0 +1,27 @@
+# TopBackup - Dependências Python
+
+# Firebird 2.5
+fdb==2.0.2
+
+# MySQL
+mysql-connector-python==8.3.0
+
+# GUI
+customtkinter==5.2.2
+Pillow==10.2.0
+pystray==0.19.5
+
+# Service Windows
+pywin32==306
+
+# Scheduling
+APScheduler==3.10.4
+
+# Network
+requests==2.31.0
+
+# Versioning
+packaging==24.0
+
+# Build (opcional - para empacotamento)
+pyinstaller==6.4.0

@@ -1,0 +1,40 @@
+{
+    "firebird": {
+        "database_path": "",
+        "gbak_path": "C:\\Program Files (x86)\\Firebird\\Firebird_2_5\\bin\\gbak.exe",
+        "user": "SYSDBA",
+        "password": "masterkey",
+        "charset": "UTF8"
+    },
+    "mysql": {
+        "host": "dashboard.topsoft.cloud",
+        "port": 3306,
+        "database": "PROJETO_BACKUPS",
+        "user": "user_sinc",
+        "password": "51Ncr0n1z4d0r@2025@!@#"
+    },
+    "ftp": {
+        "host": "",
+        "port": 21,
+        "user": "",
+        "password": "",
+        "remote_path": "/backups",
+        "passive_mode": true
+    },
+    "app": {
+        "first_run": true,
+        "run_as_service": false,
+        "start_minimized": false,
+        "auto_update": true,
+        "empresa_id": null,
+        "empresa_cnpj": ""
+    },
+    "backup": {
+        "local_destino1": "",
+        "local_destino2": "",
+        "backup_remoto": false,
+        "prefixo_backup": "V",
+        "compactar_zip": true,
+        "verificar_backup": true
+    }
+}
