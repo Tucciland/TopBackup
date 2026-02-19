@@ -93,25 +93,81 @@ pyinstaller topbackup.spec
    ```
 
 5. **Inserir a nova versão no banco MySQL (VERSAO_APP)**
-   ```sql
-   INSERT INTO VERSAO_APP (VERSAO, DATA_LANCAMENTO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
-   VALUES ('X.X.X', NOW(), 'URL_DOWNLOAD_GITHUB', 'Descrição das mudanças', 'N');
-   ```
+   - Ver SQL completo na seção abaixo
 
-### URL de Download (IMPORTANTE)
+---
 
-A URL de download é **sempre a mesma** para todas as versões, pois aponta diretamente para o arquivo no repositório Git:
+### ⚠️ CHECKLIST OBRIGATÓRIO ANTES DE INSERIR NO BANCO ⚠️
+
+**SEMPRE VERIFICAR ANTES DE EXECUTAR O SQL:**
+
+- [ ] A URL contém `TopBackup/dist/TopBackup.exe` (com a pasta TopBackup)
+- [ ] O token do GitHub está atualizado (verificar arquivo `@GIT` na raiz do projeto)
+- [ ] A versão no SQL corresponde à versão em `src/version.py`
+
+**ESTRUTURA DO REPOSITÓRIO (não esquecer!):**
+```
+PROJETO_BACKUP/           ← RAIZ DO GIT (não é TopBackup!)
+├── TopBackup/
+│   ├── dist/
+│   │   └── TopBackup.exe  ← ARQUIVO DO EXECUTÁVEL
+│   ├── src/
+│   └── ...
+└── ...
+```
+
+---
+
+### URL de Download (CRÍTICO - LER COM ATENÇÃO)
+
+A URL de download é **sempre a mesma** para todas as versões:
 
 ```
 https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe
 ```
 
-**ATENÇÃO:** O caminho inclui `TopBackup/dist/` porque a raiz do repositório é `PROJETO_BACKUP`, não `TopBackup`.
+**🚨 ERRO COMUM:** Usar `/main/dist/TopBackup.exe` em vez de `/main/TopBackup/dist/TopBackup.exe`
 
-- O arquivo `TopBackup/dist/TopBackup.exe` é sobrescrito a cada build e push
-- Não criar URLs diferentes para cada versão
-- O token de acesso GitHub está configurado no banco MySQL
-- Nunca commitar o token no código fonte (GitHub bloqueia)
+O caminho DEVE incluir `TopBackup/dist/` porque:
+- A raiz do repositório Git é `PROJETO_BACKUP`
+- A pasta `TopBackup` está DENTRO do repositório
+- O arquivo está em `TopBackup/dist/TopBackup.exe`
+
+---
+
+### SQL Completo para Inserir Nova Versão
+
+**Copie e cole este SQL, substituindo apenas os valores indicados:**
+
+```sql
+-- Consultar token atual (se precisar)
+-- SELECT * FROM CONFIG WHERE CHAVE = 'GITHUB_TOKEN';
+
+-- Inserir nova versão (SUBSTITUIR: X.X.X e DESCRICAO)
+INSERT INTO VERSAO_APP (VERSAO, DATA_LANCAMENTO, URL_DOWNLOAD, CHANGELOG, OBRIGATORIA)
+VALUES (
+    'X.X.X',                    -- ← Substituir pela versão (ex: '1.0.7')
+    NOW(),
+    'https://TOKEN_DO_ARQUIVO_@GIT@raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe',
+    'DESCRICAO DAS MUDANÇAS',   -- ← Substituir pela descrição
+    'N'
+);
+
+-- Verificar se inseriu corretamente
+SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
+```
+
+**Se o token do GitHub mudar:**
+1. Atualizar o arquivo `@GIT` na raiz do projeto
+2. Atualizar a URL no SQL acima
+3. Se já tiver versão no banco, usar UPDATE:
+   ```sql
+   UPDATE VERSAO_APP
+   SET URL_DOWNLOAD = 'https://NOVO_TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe'
+   WHERE VERSAO = 'X.X.X';
+   ```
+
+---
 
 ### Fluxo de Atualização Automática
 
