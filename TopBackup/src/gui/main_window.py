@@ -521,8 +521,6 @@ class MainWindow(ctk.CTk):
         """Callback de fechar janela"""
         if self.settings.app.start_minimized:
             self.withdraw()  # Minimiza para tray
-            if self.tray_icon:
-                self.tray_icon.notify("TopBackup", "Minimizado para a bandeja do sistema")
         else:
             self._quit_app()
 
