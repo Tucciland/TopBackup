@@ -103,10 +103,12 @@ pyinstaller topbackup.spec
 A URL de download é **sempre a mesma** para todas as versões, pois aponta diretamente para o arquivo no repositório Git:
 
 ```
-https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/dist/TopBackup.exe
+https://TOKEN@raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe
 ```
 
-- O arquivo `dist/TopBackup.exe` é sobrescrito a cada build e push
+**ATENÇÃO:** O caminho inclui `TopBackup/dist/` porque a raiz do repositório é `PROJETO_BACKUP`, não `TopBackup`.
+
+- O arquivo `TopBackup/dist/TopBackup.exe` é sobrescrito a cada build e push
 - Não criar URLs diferentes para cada versão
 - O token de acesso GitHub está configurado no banco MySQL
 - Nunca commitar o token no código fonte (GitHub bloqueia)
