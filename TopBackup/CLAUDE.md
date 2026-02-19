@@ -180,8 +180,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.0.6
-**Última Atualização:** 2026-02-12
+**Versão Atual:** 1.0.7
+**Última Atualização:** 2026-02-19
 
 ### ✅ Implementado e Funcionando
 
@@ -243,6 +243,20 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 ---
 
 ## Histórico de Sessões
+
+### 2026-02-19
+**v1.0.7: Remove notificação ao minimizar para bandeja**
+
+- Removida notificação do Windows "Minimizado para a bandeja do sistema" ao fechar a janela
+- App agora minimiza silenciosamente para o system tray sem exibir toast notification
+
+**Arquivos modificados:**
+- `src/gui/main_window.py` - Removida chamada `tray_icon.notify()` no método `_on_close()`
+- `src/version.py` - Versão atualizada para 1.0.7
+
+**Commit:** `6f3cdbd` - "release: v1.0.7 - Remove notificação ao minimizar para bandeja"
+
+**Versão publicada no MySQL:** VERSAO_APP ID=9, v1.0.7
 
 ### 2026-02-12 (sessão 2 - tarde)
 **v1.0.6: App silencioso - Remove notificações de backup**
