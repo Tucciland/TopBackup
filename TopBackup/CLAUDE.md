@@ -247,6 +247,120 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Histórico de Sessões
 
+### 2026-04-30 (sessão 2) — Pós-release: bug do downloader, limpeza de credenciais, repo público
+
+Após publicar v1.1.2, cliente reportou erro `Falha no download: Erro HTTP: 404` no auto-update. Investigação aprofundada levou a duas decisões importantes (bug do downloader + tornar repo público) e uma operação de limpeza/reescrita de histórico do git.
+
+**Root cause do 404 no download (NÃO ÓBVIO — anotar pra próxima vez):**
+
+- O `Downloader.download()` (`src/network/downloader.py:78`) usa `requests.get(url, stream=True)`. A URL armazenada em `URL_DOWNLOAD` da `VERSAO_APP` tem o token embutido: `https://TOKEN@raw.githubusercontent.com/...`.
+- A versão de `requests==2.31.0` (e qualquer versão posterior) usa `urllib3>=2.0`, que por mudança de **segurança** removeu a extração automática de credenciais embutidas em URLs. O `Authorization` header **não é mais enviado** quando o token está na URL.
+- `curl` extrai e envia (Basic Auth `TOKEN:`); `requests` não.
+- Resultado: GitHub raw responde **404** em repos privados (sem auth = não encontrado).
+
+**Confirmação experimental** (gravar pra debugging futuro):
+```python
+import requests
+url = "https://ghp_XXX@raw.githubusercontent.com/owner/repo/main/file.exe"
+r = requests.get(url)
+# r.status_code == 404 em repo privado
+# r.request.headers tem Authorization vazio
+
+# Soluções que FUNCIONAM:
+# requests.get(plain_url, headers={"Authorization": f"Bearer {token}"})
+# requests.get(plain_url, headers={"Authorization": f"token {token}"})
+# requests.get(plain_url, auth=(token, ""))
+```
+
+**Implicação grave:** todos os clientes que rodavam v1.1.0/v1.1.1 ficaram **presos** — o downloader deles tem o bug, então não conseguem baixar nem v1.1.2 nem qualquer versão futura enquanto a URL tiver token embutido em repo privado.
+
+**Decisão estratégica:** tornar `Tucciland/TopBackup` **público**. Alternativa seria fix do downloader em v1.1.3 + update manual nos clientes presos, mas isso exigiria visita técnica em cada máquina. Tornar público destrava todo mundo de uma vez (URL sem auth real necessária funciona em repo público; o token embutido é simplesmente ignorado).
+
+**Bugs/leaks descobertos durante preparação para público:**
+
+1. **Senha MySQL hardcoded em 2 arquivos** (commitada desde v1.0.6):
+   - `TopBackup/config/config.json.example:15` — `"password": "51Ncr0n1z4d0r@2025@!@#"`
+   - `TopBackup/src/gui/setup_wizard.py:314` — `mysql_pass_entry.insert(0, "51Ncr0n1z4d0r@2025@!@#")  # Padrão TopSoft`
+   - Decisão do usuário: NÃO trocar a senha do MySQL, apenas remover do repo.
+
+2. **`.gitignore` quebrado**: listava `@GIT` mas o arquivo real é `GIT` (sem `@`). Token GitHub não estava sendo gitignored. Por sorte, nunca foi commitado (sempre untracked).
+
+**Limpeza executada (em ordem):**
+
+1. `git filter-repo --replace-text` substituindo `51Ncr0n1z4d0r@2025@!@#` por `<senha>` em **todos os blobs texto** dos 15 commits. Limpou `config.json.example` e `setup_wizard.py` em todo o histórico (textual).
+
+2. **Rebuild do `dist/TopBackup.exe`** com PyInstaller, agora compilando do source limpo. O exe novo (38.262.441 bytes) não tem mais a senha embutida no PYZ.
+
+3. **`.gitignore` corrigido**: adicionado `GIT` (sem `@`) na linha 41-43.
+
+4. **Auditoria multi-camada** (working tree + histórico + binários `dist/`) — varreu PATs, AWS keys, Slack, Stripe, Google API, OpenAI, private keys, connection strings, JWT, CNPJs reais, emails. Tudo limpo exceto risco residual nos exes antigos:
+
+5. **Risco residual identificado**: exes binários antigos (`dist/TopBackup.exe` em commits pré-rebuild) tinham a senha embutida no **PYZ comprimido** do PyInstaller. `git filter-repo --replace-text` não toca em binários, e zlib esconde a string de busca textual. Extração exigiria `pyinstxtractor` + `uncompyle6` — não trivial, mas viável.
+
+6. **Decisão**: usuário autorizou apagar tudo dos commits antigos (`pode apagar oque for dos commits antigos, só manter o commit`). Solução escolhida: **squash completo do histórico**.
+
+7. **Squash via `git checkout --orphan`**:
+   ```bash
+   git checkout --orphan main-clean
+   git add -A
+   git commit -m "TopBackup v1.1.2 — estado limpo (squash)"
+   git branch -D main && git branch -m main
+   git push --force origin main
+   ```
+
+8. **`git gc --aggressive --prune=now`**: reduziu `.git` local de **177 MB → 38 MB**.
+
+**Estado final do repo (pré-tornar-público):**
+
+- **1 único commit** em `main`: `968b316 TopBackup v1.1.2 — estado limpo (squash)`
+- Zero senhas, tokens ou credenciais em qualquer lugar do repo (texto ou binário)
+- `dist/TopBackup.exe` atual (limpo, 38 MB)
+- `dist/TopBackup_update.exe` antigo (verificado limpo, é helper diferente sem `setup_wizard.py`)
+- URL de download HTTP 200 com novo ETag — auto-update funcionará assim que o repo virar público
+
+**Pendências futuras:**
+
+1. **v1.1.3 — corrigir `downloader.py`**: trocar `requests.get(url_com_token)` por:
+   ```python
+   import re
+   m = re.match(r"https://([^@/]+)@(.+)", url)
+   if m:
+       token, rest = m.group(1), m.group(2)
+       url = f"https://{rest}"
+       headers = {"Authorization": f"Bearer {token}"}
+   else:
+       headers = {}
+   response = requests.get(url, stream=True, timeout=60, headers=headers)
+   ```
+   Isso permite manter repo privado no futuro (auth via header funciona).
+
+2. **Setup Wizard limpa**: `setup_wizard.py:314` tem `mysql_pass_entry.insert(0, "<senha>")`. Trocar por `""` quando for tratar a v1.1.3 (atualmente pré-preenche o campo MySQL com `<senha>` literal — esquisito mas funcional).
+
+3. **`config.json.example:15`** tem `"password": "<senha>"`. Mesmo cenário, é só template.
+
+4. **Voltar repo a privado (opcional)**: após confirmação que todos os clientes migraram para v1.1.3+ (com downloader fixo), pode tornar privado de novo. Verificar via query `SELECT versao_local, COUNT(*) FROM EMPRESA GROUP BY versao_local`.
+
+**Comandos úteis pra próxima sessão:**
+
+```bash
+# Verificar adoção da v1.1.2 nos clientes
+mysql -h dashboard.topsoft.cloud -u user_sinc -p PROJETO_BACKUPS -e \
+  "SELECT VERSAO_LOCAL, COUNT(*) FROM EMPRESA GROUP BY VERSAO_LOCAL ORDER BY 2 DESC"
+
+# Revalidar URL de download
+curl -I "https://raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe"
+```
+
+**Lições gravadas:**
+
+- **Sempre usar `Authorization` header** em vez de URL com token embutido pra repos privados. urllib3 2.x quebrou a forma antiga.
+- **Nunca hardcode credenciais** em `.example` ou em código (mesmo "default da empresa").
+- **Filter-repo `--replace-text` não toca em binários** — pra binários, squash do histórico é a única forma prática.
+- **PyInstaller `--onefile` comprime PYZ com zlib** — `grep` direto no exe não acha strings literais, mas elas estão lá.
+- **`.gitignore` precisa casar exatamente o nome do arquivo** (case-sensitive). `@GIT` ≠ `GIT`.
+
+---
+
 ### 2026-04-30
 **v1.1.2: Desabilita inicialização automática do ServReplicacao**
 
