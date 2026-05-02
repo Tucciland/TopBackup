@@ -180,8 +180,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.1.2
-**Última Atualização:** 2026-04-30
+**Versão Atual:** 1.1.2 *(v1.1.3 pré-staged em `main` — release prevista para 2026-05-04, ver `RELEASE_v1.1.3.md`)*
+**Última Atualização:** 2026-05-02
 
 ### ✅ Implementado e Funcionando
 
@@ -191,8 +191,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 - BackupScheduler (APScheduler com múltiplas agendas)
 - Três tipos de backup: Versionado (V), Semanal (S), Único (U)
 - **Suporte a múltiplos bancos de dados** (v1.0.9)
-- **ServReplicacaoManager** - Gerencia ServReplicacao.exe automaticamente (v1.1.0) — **DESABILITADO em v1.1.2** (chamadas comentadas no `_ensure_startup_components`; código preservado para reativar)
-- **StartupManager** - Gerencia atalhos no shell:startup (v1.1.0) — em v1.1.2 só cria atalho do TopBackup (não mais do ServReplicacao)
+- **ServReplicacaoManager** - Gerencia ServReplicacao.exe automaticamente (v1.1.0) — desabilitado em v1.1.2; em v1.1.3 (pre-stage) volta condicional via flag `AppConfig.sync_replicacao_enabled` (default `True` = retoma comportamento de v1.1.0/v1.1.1; `False` = comportamento passivo de v1.1.2)
+- **StartupManager** - Gerencia atalhos no shell:startup (v1.1.0) — recebe `serv_exe_path` apenas quando o toggle está habilitado em v1.1.3+
 
 **Database:**
 - FirebirdClient (leitura EMPRESA, AGENDA_BACKUP)
@@ -246,6 +246,79 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 ---
 
 ## Histórico de Sessões
+
+### 2026-05-02 — Pré-stage de v1.1.3: toggle ServReplicacao + fix downloader urllib3
+
+**Objetivo da sessão.** Reintroduzir, de forma controlada por checkbox, o gerenciamento automático do `ServReplicacao.exe` que foi desabilitado em v1.1.2 — com **default = habilitado** (volta ao comportamento de v1.1.0/v1.1.1) e opção de desligar via UI quando o cliente preferir o comportamento passivo. Aproveitar a release para resolver a pendência do bug do downloader (urllib3 2.x removeu propagação automática de credenciais embutidas em URL).
+
+**Restrição operacional.** Os apps em campo (v1.1.2) NÃO podem atualizar hoje — release efetiva planejada para segunda-feira (2026-05-04). Estratégia confirmada com o usuário: **pre-stage hoje** (commit + push + rebuild do exe **mantendo `version.py` em 1.1.2**); na segunda, **bump para 1.1.3 + rebuild + commit + push + INSERT em `VERSAO_APP`**. Como o auto-update compara `pkg_version.parse(remoto) > pkg_version.parse(local)` e ninguém vai inserir 1.1.3 no MySQL hoje, a comparação `1.1.2 > 1.1.2 == False` garante zero atualizações em campo.
+
+**Mudanças aplicadas (commit `641c043`):**
+
+1. **`src/config/settings.py`** — `AppConfig.sync_replicacao_enabled: bool = True` adicionado entre `auto_update` e `empresa_id`. Compatibilidade automática via default da dataclass: cliente v1.1.2 atualizando para v1.1.3 não tem o campo no `config.json`, então recebe `True` ao carregar (volta ao comportamento pré-v1.1.2 — exatamente o que o usuário decidiu).
+
+2. **`src/core/app_controller.py`** — `_ensure_startup_components()` (linhas 489-540) descomentado e wrappeado:
+   ```python
+   serv_exe_path = None
+   if self.settings.app.sync_replicacao_enabled:
+       serv_manager = ServReplicacaoManager(self.settings)
+       serv_exe_path = serv_manager.get_exe_path()
+       success, msg = serv_manager.ensure_running()
+       ... log ...
+   else:
+       self.logger.info("ServReplicacao desabilitado por configuração")
+   results = startup_manager.ensure_all_shortcuts(serv_exe_path)
+   ```
+   Quando flag = `False`, `ensure_all_shortcuts(None)` pula internamente o atalho do ServReplicacao (`startup_manager.py:246`). Decisão deliberada: **NÃO matar processo nem remover atalho existente** quando a flag passa de `True` → `False`; cliente decide manualmente. Mantém princípio passivo da v1.1.2.
+
+3. **`src/gui/dialogs.py`** — checkbox "Manter sincronização (ServReplicacao) ativa" na **aba Geral** (escolha do usuário, junto com `auto_update` e `start_minimized`), seguindo o padrão dos toggles existentes (`BooleanVar` → `CTkCheckBox` → `_load_values` → `_save`).
+
+4. **`config/config.json.example`** — campo `"sync_replicacao_enabled": true` documentado na seção `app`.
+
+5. **`src/network/downloader.py` (fix v1.1.3)** — helper `_split_url_and_auth(url)` extrai token de URLs `https://TOKEN@host/...` via regex `^(https?)://([^@/\s]+)@(.+)$` e retorna `(clean_url, {Authorization: Bearer TOKEN})`. Aplicado em `download()` e `download_to_memory()`. Permite voltar repo a privado no futuro sem quebrar auto-update. Solução validada em 4 cenários (URL com token, sem token, http puro, `@` em path como falso positivo).
+
+**Smoke tests rodados (todos passaram):**
+
+| Cenário | Resultado |
+|---|---|
+| `AppConfig()` default | `sync_replicacao_enabled = True` ✅ |
+| `Settings.load()` em JSON sem o campo | fallback automático para `True` ✅ |
+| `Settings.load()` em JSON com `False` | respeita o valor ✅ |
+| `Settings.save()` persiste o campo | ✅ |
+| `_split_url_and_auth("https://ghp_xxx@raw.githubusercontent.com/...")` | clean_url + Bearer header ✅ |
+| `_split_url_and_auth("https://raw.githubusercontent.com/...")` | URL inalterada, headers vazios ✅ |
+| `_split_url_and_auth("https://example.com/path/with@symbol/file")` | sem extração (regex previne falso positivo) ✅ |
+
+**Build/push de hoje:**
+
+- `dist/TopBackup.exe` regerado via `..\venv\Scripts\pyinstaller.exe topbackup.spec --noconfirm` → 38.264.212 bytes
+- `git push origin main` → commit `641c043` em `Tucciland/TopBackup`
+- Validação: `curl -I https://raw.githubusercontent.com/Tucciland/TopBackup/main/TopBackup/dist/TopBackup.exe` → HTTP 200, ETag novo `0c3beda73a1eea6d147c5b7bc508a630299e30aa83a6ff7ab25d64127115aa8d`
+- `src/version.py` permanece `VERSION = "1.1.2"` (intencional — ver "Restrição operacional" acima)
+- Nenhum INSERT em `VERSAO_APP` no MySQL — última versão registrada continua sendo ID=14 (v1.1.2, 2026-04-30)
+
+**Pendência: release v1.1.3 — segunda-feira (2026-05-04).** Runbook completo gravado em `RELEASE_v1.1.3.md` na raiz de `TopBackup/`. Inclui: bump version.py → rebuild → commit → push → aguardar CDN → INSERT no MySQL com token de `GIT`. O arquivo deve ser apagado após executada a release.
+
+**Decisões deliberadas:**
+
+- Flag em `AppConfig` (não em `BackupConfig`) — segue o padrão `auto_update`/`start_minimized` (comportamento de inicialização, não de backup).
+- Nome em snake_case `sync_replicacao_enabled` (consistente com `auto_update`/`run_as_service`); rótulo de UI em português ("Manter sincronização (ServReplicacao) ativa").
+- Default `True` em vez de `False` — usuário **mudou de ideia durante a conversa**: inicialmente queria default `False` (sem sync), depois decidiu `True` (volta ao comportamento "como funcionava antes").
+- Fix do downloader **junto** com o toggle — aproveita o ciclo de release; alternativa de fazer só na v1.1.4 foi rejeitada pelo usuário ("Sim, junto com o toggle (Recomendado)").
+
+**Risco residual mitigado:** entre hoje e segunda, o exe no GitHub (com VERSION=1.1.2 mas código novo) está acessível. Nenhum cliente vai baixá-lo porque a comparação de versão retorna `False`. Se precisar reverter antes de segunda: `git revert 641c043 && git push` (sem precisar tocar em MySQL).
+
+**Arquivos modificados nesta sessão:**
+- `TopBackup/src/config/settings.py`
+- `TopBackup/src/core/app_controller.py`
+- `TopBackup/src/gui/dialogs.py`
+- `TopBackup/src/network/downloader.py`
+- `TopBackup/config/config.json.example`
+- `TopBackup/dist/TopBackup.exe` (rebuild)
+- `TopBackup/CLAUDE.md` (esta entrada)
+- `TopBackup/RELEASE_v1.1.3.md` (novo — runbook para segunda)
+
+---
 
 ### 2026-04-30 (sessão 2) — Pós-release: bug do downloader, limpeza de credenciais, repo público
 
