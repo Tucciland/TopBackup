@@ -491,10 +491,14 @@ class AppController:
         Verifica e garante componentes de inicialização.
 
         Executa em thread separada para não bloquear a UI:
-        - StartupManager.ensure_all_shortcuts() (apenas TopBackup)
+        - ServReplicacaoManager.ensure_running() (se sync_replicacao_enabled)
+        - StartupManager.ensure_all_shortcuts()
 
-        Nota: ServReplicacaoManager.ensure_running() está desabilitado
-        em v1.1.2 — ver bloco comentado abaixo.
+        A flag `settings.app.sync_replicacao_enabled` controla se o
+        ServReplicacao é iniciado e se o atalho dele é criado no Startup
+        do Windows. Quando False, mantém o comportamento de v1.1.2 (não
+        inicia processo, não cria atalho — atalho/processo existente NÃO
+        é removido/morto: cliente decide manualmente).
 
         Apenas loga resultados - não mostra pop-ups.
         """
@@ -502,26 +506,23 @@ class AppController:
             try:
                 self.logger.info("Verificando componentes de inicialização...")
 
-                # ============================================================
-                # DESABILITADO em v1.1.2 — ServReplicacao causava lentidão em
-                # outro sistema. TopBackup não inicia mais o processo nem cria
-                # atalho no Startup. Para reativar: descomentar o bloco abaixo
-                # e passar `serv_exe_path` em ensure_all_shortcuts().
-                # ============================================================
-                # serv_manager = ServReplicacaoManager(self.settings)
-                # serv_exe_path = serv_manager.get_exe_path()
-                #
-                # success, msg = serv_manager.ensure_running()
-                # if success:
-                #     self.logger.info(f"ServReplicacao: {msg}")
-                # else:
-                #     self.logger.warning(f"ServReplicacao: {msg}")
-                # ============================================================
+                serv_exe_path = None
+                if self.settings.app.sync_replicacao_enabled:
+                    serv_manager = ServReplicacaoManager(self.settings)
+                    serv_exe_path = serv_manager.get_exe_path()
 
-                # Atalhos de inicialização (apenas TopBackup;
-                # ServReplicacao desabilitado em v1.1.2)
+                    success, msg = serv_manager.ensure_running()
+                    if success:
+                        self.logger.info(f"ServReplicacao: {msg}")
+                    else:
+                        self.logger.warning(f"ServReplicacao: {msg}")
+                else:
+                    self.logger.info("ServReplicacao desabilitado por configuração")
+
+                # Atalhos de inicialização. Quando serv_exe_path é None,
+                # ensure_all_shortcuts() pula o atalho do ServReplicacao.
                 startup_manager = StartupManager()
-                results = startup_manager.ensure_all_shortcuts()
+                results = startup_manager.ensure_all_shortcuts(serv_exe_path)
 
                 for name, (success, msg) in results.items():
                     if success:

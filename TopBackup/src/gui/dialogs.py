@@ -386,6 +386,14 @@ class SettingsDialog(ctk.CTkToplevel):
             variable=self.service_var
         ).pack(anchor="w", pady=5)
 
+        # Manter sincronização (ServReplicacao) ativa
+        self.sync_replicacao_var = ctk.BooleanVar()
+        ctk.CTkCheckBox(
+            tab,
+            text="Manter sincronização (ServReplicacao) ativa",
+            variable=self.sync_replicacao_var
+        ).pack(anchor="w", pady=5)
+
     def _create_backup_tab(self):
         """Cria aba de backup"""
         tab = self.tabview.add("Backup")
@@ -609,6 +617,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.start_min_var.set(self.settings.app.start_minimized)
         self.auto_update_var.set(self.settings.app.auto_update)
         self.service_var.set(self.settings.app.run_as_service)
+        self.sync_replicacao_var.set(self.settings.app.sync_replicacao_enabled)
 
         # Backup
         self.dest1_entry.insert(0, self.settings.backup.local_destino1)
@@ -634,6 +643,7 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings.app.start_minimized = self.start_min_var.get()
         self.settings.app.auto_update = self.auto_update_var.get()
         self.settings.app.run_as_service = self.service_var.get()
+        self.settings.app.sync_replicacao_enabled = self.sync_replicacao_var.get()
 
         # Backup
         self.settings.backup.local_destino1 = self.dest1_entry.get()

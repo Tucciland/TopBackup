@@ -27,6 +27,7 @@
         "run_as_service": false,
         "start_minimized": false,
         "auto_update": true,
+        "sync_replicacao_enabled": true,
         "empresa_id": null,
         "empresa_cnpj": ""
     },

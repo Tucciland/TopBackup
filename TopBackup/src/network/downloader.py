@@ -4,14 +4,31 @@ Download de atualizações e outros recursos
 """
 
 import os
+import re
 import tempfile
 import hashlib
 from pathlib import Path
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable, Dict, Tuple
 import requests
 
 from ..config.constants import UPDATE_DIR_NAME
 from ..utils.logger import get_logger
+
+
+def _split_url_and_auth(url: str) -> Tuple[str, Dict[str, str]]:
+    """
+    Extrai token embutido em URLs do tipo `https://TOKEN@host/...`.
+
+    urllib3 2.x parou de propagar credenciais embutidas em URLs por
+    razões de segurança, então o token precisa ser enviado via header
+    Authorization. Retorna a URL sem o token e os headers prontos.
+    Se a URL não tiver token, retorna inalterada com headers vazios.
+    """
+    m = re.match(r"^(https?)://([^@/\s]+)@(.+)$", url)
+    if not m:
+        return url, {}
+    scheme, token, rest = m.group(1), m.group(2), m.group(3)
+    return f"{scheme}://{rest}", {"Authorization": f"Bearer {token}"}
 
 
 class Downloader:
@@ -75,7 +92,8 @@ class Downloader:
             self.logger.info(f"Iniciando download: {url}")
 
             # Faz requisição com streaming
-            response = requests.get(url, stream=True, timeout=60)
+            request_url, headers = _split_url_and_auth(url)
+            response = requests.get(request_url, stream=True, timeout=60, headers=headers)
             response.raise_for_status()
 
             # Obtém tamanho total
@@ -141,7 +159,8 @@ class Downloader:
             Tuple[bool, bytes]: (sucesso, dados ou mensagem_erro)
         """
         try:
-            response = requests.get(url, timeout=30)
+            request_url, headers = _split_url_and_auth(url)
+            response = requests.get(request_url, timeout=30, headers=headers)
             response.raise_for_status()
 
             content_length = int(response.headers.get('content-length', 0))

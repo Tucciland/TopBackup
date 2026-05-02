@@ -49,6 +49,7 @@ class AppConfig:
     run_as_service: bool = False
     start_minimized: bool = True
     auto_update: bool = True
+    sync_replicacao_enabled: bool = True
     empresa_id: Optional[int] = None
     empresa_cnpj: str = ""
 
