@@ -543,6 +543,18 @@ class SettingsDialog(ctk.CTkToplevel):
         self.mysql_host_entry = ctk.CTkEntry(mysql_inner, width=350)
         self.mysql_host_entry.pack(anchor="w")
 
+        ctk.CTkLabel(mysql_inner, text="Banco:").pack(anchor="w", pady=(5, 0))
+        self.mysql_db_entry = ctk.CTkEntry(mysql_inner, width=350)
+        self.mysql_db_entry.pack(anchor="w")
+
+        ctk.CTkLabel(mysql_inner, text="Usuário:").pack(anchor="w", pady=(5, 0))
+        self.mysql_user_entry = ctk.CTkEntry(mysql_inner, width=350)
+        self.mysql_user_entry.pack(anchor="w")
+
+        ctk.CTkLabel(mysql_inner, text="Senha:").pack(anchor="w", pady=(5, 0))
+        self.mysql_pass_entry = ctk.CTkEntry(mysql_inner, width=350, show="*", placeholder_text="Digite a senha")
+        self.mysql_pass_entry.pack(anchor="w")
+
     def _browse_firebird_folder(self):
         """Abre diálogo para selecionar pasta do Firebird"""
         import os
@@ -636,6 +648,11 @@ class SettingsDialog(ctk.CTkToplevel):
         self.fb_db_entry.insert(0, self.settings.firebird.database_path)
         self.fb_db_2_entry.insert(0, self.settings.firebird.database_path_2 or "")
         self.mysql_host_entry.insert(0, self.settings.mysql.host)
+        self.mysql_db_entry.insert(0, self.settings.mysql.database)
+        self.mysql_user_entry.insert(0, self.settings.mysql.user)
+        # Não pre-preencher placeholder corrompido como senha real
+        if self.settings.mysql.password and self.settings.mysql.password != "<senha>":
+            self.mysql_pass_entry.insert(0, self.settings.mysql.password)
 
     def _save(self):
         """Salva configurações"""
@@ -657,6 +674,11 @@ class SettingsDialog(ctk.CTkToplevel):
         self.settings.firebird.database_path = self.fb_db_entry.get()
         self.settings.firebird.database_path_2 = self.fb_db_2_entry.get()
         self.settings.mysql.host = self.mysql_host_entry.get()
+        self.settings.mysql.database = self.mysql_db_entry.get()
+        self.settings.mysql.user = self.mysql_user_entry.get()
+        new_pass = self.mysql_pass_entry.get()
+        if new_pass:
+            self.settings.mysql.password = new_pass
 
         # Salva
         if self.settings.save():

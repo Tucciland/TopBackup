@@ -84,6 +84,12 @@ def run_gui():
     # Carrega configurações
     settings = Settings.load()
 
+    # Detecta credencial MySQL nao-configurada (residuo de placeholder ou vazia).
+    # Trata como first_run para forcar Setup Wizard em vez de erro MySQL 1045 critico.
+    if settings.mysql.password in ("<senha>", ""):
+        logger.warning("Senha MySQL nao configurada - abrindo wizard de configuracao")
+        settings.app.first_run = True
+
     # Verifica primeira execução
     if settings.app.first_run or not settings.is_configured():
         logger.info("Primeira execução - abrindo wizard de configuração")

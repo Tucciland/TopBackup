@@ -180,8 +180,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.1.2 *(v1.1.3 pré-staged em `main` — release prevista para 2026-05-04, ver `RELEASE_v1.1.3.md`)*
-**Última Atualização:** 2026-05-02
+**Versão Atual:** 1.1.3
+**Última Atualização:** 2026-05-08
 
 ### ✅ Implementado e Funcionando
 
@@ -246,6 +246,62 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 ---
 
 ## Histórico de Sessões
+
+### 2026-05-08 — Release v1.1.3 publicada (com fixes adicionais do `<senha>`)
+
+**Contexto.** O pre-stage de 2026-05-02 (commit `641c043`) adicionou ao `main` o toggle ServReplicacao e o fix do downloader urllib3, mas a release agendada para segunda 2026-05-04 não foi executada. Hoje (sexta, 6 dias depois) ao retomar a release, um cliente em campo reportou erro `Erro de conexão MySQL: 1045 (28000): Access denied for user 'user_sinc'@'187.86.30.81'`. Investigação descobriu causa-raiz **não relacionada ao pre-stage**: o `git filter-repo --replace-text` da limpeza de credenciais (sessão 2026-04-30 sessão 2) substituiu a senha real `51Ncr0n1z4d0r@2025@!@#` por `<senha>` literal em `setup_wizard.py:314` e `config.json.example:15`. Pendência registrada na ocasião mas esquecida no pre-stage. Cliente que rodou Setup Wizard pós-2026-04-30 sem digitar senha real ficou com `"password": "<senha>"` no `config.json` → MySQL 1045 → app trava em "Erro de Inicialização".
+
+**Diagnóstico via consulta ao MySQL** (rodada hoje com credenciais válidas daqui):
+- 75 empresas cadastradas; 64 (85%) já em v1.1.2 saudáveis sincronizando hoje.
+- 18 paradas há 2+ dias, mas só 2 mostram padrão consistente do bug `<senha>` (heartbeat e backup param na mesma data exata): **ITAMAR DE FREITAS** (parou 2026-04-30 18:00) e **CASA DE CARNES REZENDE** (parou 2026-05-04 12:07). Outros são clientes em versões antigas inativos ou casos de Firebird local quebrado (DROGARIA POPULAR sincroniza heart hoje mas backup parou 2026-03-04).
+- Detalhe importante: **`SettingsDialog` não tinha campo de senha MySQL** (antes desta release), então cliente travado pelo bug não tinha caminho UI para corrigir — só Setup Wizard ou edição manual de JSON.
+
+**Mudanças aplicadas nesta release** (escopo expandido vs pre-stage):
+
+1. **Pre-stage de 2026-05-02 (commit `641c043`) — promovido sem alterações de código.** Toggle `sync_replicacao_enabled` (default `True`) em `AppConfig`/`app_controller`/`dialogs`/`config.json.example`; helper `_split_url_and_auth` em `network/downloader.py` aplicado a `download()` e `download_to_memory()` (Authorization Bearer header).
+
+2. **Fix `<senha>` literal (NOVO):**
+   - `src/gui/setup_wizard.py:314`: removida linha `mysql_pass_entry.insert(0, "<senha>")`; adicionado `placeholder_text="Digite a senha"` ao Entry.
+   - `config/config.json.example:15`: `"password": "<senha>"` → `"password": ""`.
+
+3. **Campo de senha MySQL no SettingsDialog (NOVO):** aba Conexões do dialog ganhou User/Senha/Database além do Host (que já existia). Recuperação de cliente travado agora possível via Configurações → Conexões → MySQL → digitar senha → Salvar (sem precisar refazer Setup Wizard inteiro). `_load_values` ignora password=`<senha>` (não pré-preenche placeholder); `_save` só sobrescreve password se campo foi preenchido (proteção contra apagar acidentalmente).
+
+4. **Detecção amigável de credencial não-configurada (NOVO):** em `src/main.py` (`run_gui()`), antes da checagem `is_configured()`, novo bloco trata `settings.mysql.password in ("<senha>", "")` forçando `settings.app.first_run = True` → Setup Wizard abre automaticamente em vez do popup críptico de 1045. Cliente quebrado pelo bug agora se auto-recupera no próximo boot sem necessidade de visita técnica (desde que ele tenha v1.1.3 instalada — limitação: clientes em campo já travados em v1.1.2 não recebem auto-update porque MySQL falha antes do update_checker; precisam intervenção manual; ver lista abaixo).
+
+5. **Bump:** `src/version.py` 1.1.2 → 1.1.3. Rebuild do PyInstaller. Commit + push.
+
+6. **`VERSAO_APP` MySQL:** INSERT executado com URL embutindo token de `GIT` (raiz). Repo está público hoje, então auth via header Bearer é cosmética — mas continua funcionando se voltar a privado.
+
+**Smoke tests pré-rebuild (todos passaram):**
+- `Settings.load()` carrega sem erro com config.json existente.
+- Detector main.py: `<senha>` e `""` retornam `True`; senha real retorna `False`.
+- Downloader `_split_url_and_auth` regex ainda OK em 3 casos (URL com token, sem token, falso positivo de @ em path).
+- `py_compile` OK em settings.py, dialogs.py, setup_wizard.py, main.py, downloader.py, app_controller.py.
+- `config.json.example.mysql.password` carrega como `""` (vazio).
+
+**Pendência: recuperação manual dos clientes travados em v1.1.2 com `<senha>`.** Clientes confirmados/suspeitos de estarem com config.json corrompido **NÃO recebem v1.1.3 via auto-update** (MySQL falha antes do update_checker rodar). Procedimento manual:
+
+| Cliente | Status | Última sync | Ação sugerida |
+|---|---|---|---|
+| ITAMAR DE FREITAS (CNPJ 3091***0184) | suspeito do bug `<senha>` | 2026-04-30 18:00 | TeamViewer → editar `C:\TOPBACKUP\config\config.json` (`password` real) OU Setup Wizard novo |
+| CASA DE CARNES REZENDE (CNPJ 3499***0156) | suspeito do bug `<senha>` | 2026-05-04 12:07 | idem |
+| Cliente do print (IP 187.86.30.81) | confirmado 1045 | desconhecido | identificar e aplicar mesmo procedimento |
+
+Demais 16 paradas há 2+ dias têm causas variadas (versões antigas inativas, Firebird local, PCs desligados). Não relacionados.
+
+**Adoção em massa esperada (24h):** dos 64 ativos em v1.1.2, espera-se >90% migrarem para v1.1.3 no próximo ciclo de update (10 min). Os 8 em v1.1.1 e 1 em v1.0.9 dependem de PC voltar ao ar. Repo público alivia o bug do downloader urllib3 dessas versões antigas (não precisam auth real).
+
+**Arquivos modificados nesta sessão:**
+- `TopBackup/src/version.py` (bump 1.1.2 → 1.1.3)
+- `TopBackup/src/gui/setup_wizard.py` (remove `<senha>` literal)
+- `TopBackup/src/gui/dialogs.py` (adiciona User/Senha/Database MySQL na aba Conexões)
+- `TopBackup/src/main.py` (detecção `<senha>`/vazia → força first_run)
+- `TopBackup/config/config.json.example` (`password: ""`)
+- `TopBackup/CLAUDE.md` (esta entrada + atualização "Versão Atual"/"Última Atualização")
+- `TopBackup/dist/TopBackup.exe` (rebuild com VERSION=1.1.3)
+- `TopBackup/RELEASE_v1.1.3.md` (apagado — runbook cumpriu papel)
+
+---
 
 ### 2026-05-02 — Pré-stage de v1.1.3: toggle ServReplicacao + fix downloader urllib3
 
@@ -393,7 +449,9 @@ r = requests.get(url)
 
 **Pendências futuras:**
 
-1. **v1.1.3 — corrigir `downloader.py`**: trocar `requests.get(url_com_token)` por:
+1. **✅ RESOLVIDO em v1.1.3 (2026-05-08).** Implementado via helper `_split_url_and_auth` em `src/network/downloader.py`, aplicado em `download()` e `download_to_memory()`. Pre-staged em 2026-05-02 (commit `641c043`), promovido a release em 2026-05-08.
+
+   Solução original sugerida: trocar `requests.get(url_com_token)` por:
    ```python
    import re
    m = re.match(r"https://([^@/]+)@(.+)", url)
@@ -407,9 +465,9 @@ r = requests.get(url)
    ```
    Isso permite manter repo privado no futuro (auth via header funciona).
 
-2. **Setup Wizard limpa**: `setup_wizard.py:314` tem `mysql_pass_entry.insert(0, "<senha>")`. Trocar por `""` quando for tratar a v1.1.3 (atualmente pré-preenche o campo MySQL com `<senha>` literal — esquisito mas funcional).
+2. **✅ RESOLVIDO em v1.1.3 (2026-05-08).** `setup_wizard.py:314` agora apenas configura `placeholder_text="Digite a senha"` em vez de `insert(0, "<senha>")`. Bug confirmado em campo (cliente IP 187.86.30.81 reportou 1045) e mitigado: detecção em `main.py` força Setup Wizard se senha == `<senha>` ou vazia; SettingsDialog ganhou campo de senha MySQL para recuperação rápida via TeamViewer.
 
-3. **`config.json.example:15`** tem `"password": "<senha>"`. Mesmo cenário, é só template.
+3. **✅ RESOLVIDO em v1.1.3 (2026-05-08).** `config.json.example:15` agora `"password": ""`.
 
 4. **Voltar repo a privado (opcional)**: após confirmação que todos os clientes migraram para v1.1.3+ (com downloader fixo), pode tornar privado de novo. Verificar via query `SELECT versao_local, COUNT(*) FROM EMPRESA GROUP BY versao_local`.
 

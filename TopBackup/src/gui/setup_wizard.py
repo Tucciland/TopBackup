@@ -310,8 +310,7 @@ class SetupWizard(ctk.CTkToplevel):
         c2 = ctk.CTkFrame(cred_frame, fg_color="transparent")
         c2.pack(side="left", padx=10, fill="x", expand=True)
         ctk.CTkLabel(c2, text="Senha:").pack(anchor="w")
-        self.mysql_pass_entry = ctk.CTkEntry(c2, show="*")
-        self.mysql_pass_entry.insert(0, "<senha>")
+        self.mysql_pass_entry = ctk.CTkEntry(c2, show="*", placeholder_text="Digite a senha")
         self.mysql_pass_entry.pack(anchor="w", fill="x")
 
         # Botão de teste
