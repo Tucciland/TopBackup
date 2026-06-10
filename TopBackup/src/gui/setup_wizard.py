@@ -422,7 +422,7 @@ class SetupWizard(ctk.CTkToplevel):
         self.summary_text.configure(state="disabled")
 
         # Opção de instalar como serviço
-        self.service_var = ctk.BooleanVar(value=False)
+        self.service_var = ctk.BooleanVar(value=True)
         ctk.CTkCheckBox(
             self.step4_frame,
             text="Instalar como Serviço Windows",

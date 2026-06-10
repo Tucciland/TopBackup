@@ -283,6 +283,8 @@ O utilitário que resolve isso **já existia** desde v1.0.9: `BackupEngine._extr
 - `TopBackup/CLAUDE.md` (esta entrada + "Versão Atual")
 - `TopBackup/dist/TopBackup.exe` (rebuild)
 
+**Ajuste pós-release (mesma sessão, ainda v1.1.4).** A pedido do usuário, os **dois** checkboxes da etapa Resumo passam a vir **marcados por padrão**: `service_var` (Instalar como Serviço Windows) mudou de `value=False` → `value=True` (antes só o ServReplicacao vinha marcado). Verificado que `run_as_service` é apenas preferência gravada no config (lido só em `dialogs.py`/`setup_wizard._finish`); **nada no app age sobre ele automaticamente** (instalação real do serviço exige admin + `--install`), então marcar por padrão não dispara nada nem quebra. Mantida a versão **1.1.4** (mudança é só default de checkbox do wizard, invisível para clientes já configurados): rebuild do exe + commit/push **sem** alterar `VERSAO_APP` (URL inalterada já serve o binário novo para instalações novas / clientes não atualizados). Clientes já em 1.1.4 não rebaixam nem reexecutam o wizard, então não são afetados.
+
 ---
 
 ### 2026-05-08 — Release v1.1.3 publicada (com fixes adicionais do `<senha>`)
