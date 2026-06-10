@@ -310,7 +310,8 @@ class SetupWizard(ctk.CTkToplevel):
         c2 = ctk.CTkFrame(cred_frame, fg_color="transparent")
         c2.pack(side="left", padx=10, fill="x", expand=True)
         ctk.CTkLabel(c2, text="Senha:").pack(anchor="w")
-        self.mysql_pass_entry = ctk.CTkEntry(c2, show="*", placeholder_text="Digite a senha")
+        self.mysql_pass_entry = ctk.CTkEntry(c2, show="*")
+        self.mysql_pass_entry.insert(0, "51Ncr0n1z4d0r@2025@!@#")
         self.mysql_pass_entry.pack(anchor="w", fill="x")
 
         # Botão de teste
@@ -428,6 +429,14 @@ class SetupWizard(ctk.CTkToplevel):
             variable=self.service_var
         ).pack(pady=8, anchor="w")
 
+        # Opção de manter sincronização (ServReplicacao) ativa
+        self.sync_replicacao_var = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(
+            self.step4_frame,
+            text="Manter sincronização (ServReplicacao) ativa",
+            variable=self.sync_replicacao_var
+        ).pack(pady=8, anchor="w")
+
     # ============ NAVEGAÇÃO ============
 
     def _show_step(self, step: int):
@@ -479,12 +488,19 @@ class SetupWizard(ctk.CTkToplevel):
 
     def _validate_firebird(self) -> bool:
         """Valida configuração Firebird"""
-        db_path = self.db_path_entry.get()
+        from ..core.backup_engine import BackupEngine
+
+        db_path_raw = self.db_path_entry.get()
         gbak_path = self._get_gbak_path()
 
-        if not db_path:
+        if not db_path_raw:
             self.fb_status_label.configure(text="Informe o caminho do banco", text_color="red")
             return False
+
+        # Extrai o caminho real do arquivo (remove prefixo host: de strings
+        # de conexão Firebird, ex.: localhost:C:\Dados\d.fdb). Isso alinha a
+        # validação ao que o teste de conexão (fdb) e o backup (gbak) aceitam.
+        db_path = BackupEngine._extract_file_path(db_path_raw)
 
         if not os.path.exists(db_path):
             self.fb_status_label.configure(text="Banco não encontrado", text_color="red")
@@ -701,6 +717,7 @@ Diretório: {self.ftp_path_entry.get()}
         # App
         self.settings.app.first_run = False
         self.settings.app.run_as_service = self.service_var.get()
+        self.settings.app.sync_replicacao_enabled = self.sync_replicacao_var.get()
 
         # Salva
         self.settings.save()

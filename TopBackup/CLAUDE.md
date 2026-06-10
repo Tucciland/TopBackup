@@ -180,8 +180,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.1.3
-**Última Atualização:** 2026-05-08
+**Versão Atual:** 1.1.4
+**Última Atualização:** 2026-06-10
 
 ### ✅ Implementado e Funcionando
 
@@ -246,6 +246,44 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 ---
 
 ## Histórico de Sessões
+
+### 2026-06-10 — Release v1.1.4: fix "Banco não encontrado" no wizard + toggle ServReplicacao na instalação
+
+**Contexto.** Clientes reportaram erro na instalação: na etapa 1 do Setup Wizard (seleção de Banco Principal/Secundário/Pasta Firebird), "Testar Conexão" retornava **"Conexão OK!"** mas ao clicar **"Próximo" aparecia "Banco não encontrado"**. O usuário lembrava de uma correção codada e não lançada — mas a verificação mostrou que **não estava aplicada**: as únicas mudanças não commitadas eram o bump `version.py` 1.1.3→1.1.4 e a **re-adição da senha MySQL hardcoded** em `setup_wizard.py` (mantida nesta release por decisão explícita do usuário, ver abaixo).
+
+**Causa-raiz (confirmada lendo o código).** Divergência entre teste e validação no `setup_wizard.py`:
+- `_test_firebird()` usa o driver `fdb`, que **aceita strings de conexão** (`localhost:C:\TOPSOFT\Dados\dados.fdb`) → conecta → "OK".
+- `_validate_firebird()` fazia `os.path.exists(db_path)` **na string crua** → `os.path.exists("localhost:C:\...")` == `False` → "Banco não encontrado".
+
+O utilitário que resolve isso **já existia** desde v1.0.9: `BackupEngine._extract_file_path()` (`backup_engine.py:66`, regex `([A-Za-z]:[\\\/].+)$`), usado em `_execute_gbak()` mas nunca ligado à validação do wizard.
+
+**Mudanças aplicadas:**
+
+1. **Fix `_validate_firebird()`** (`src/gui/setup_wizard.py`): import lazy de `BackupEngine`; extrai o caminho real via `_extract_file_path()` **antes** do `os.path.exists`. Agora "Testar Conexão" OK → "Próximo" avança, consistente com o que o gbak/backup já fazem. Banco secundário (`db_path_2`) não é validado no wizard (sem `os.path.exists`), então não tinha o bug — inalterado.
+
+2. **Checkbox "Manter sincronização (ServReplicacao) ativa" na etapa 4 (Resumo)** (`src/gui/setup_wizard.py`): `_create_step4()` ganhou o checkbox (default marcado = ativo) ao lado de "Instalar como Serviço Windows"; `_finish()` persiste `self.settings.app.sync_replicacao_enabled = self.sync_replicacao_var.get()`. Reusa a config `AppConfig.sync_replicacao_enabled` (já existente desde v1.1.3, antes só na aba Geral de Configurações).
+
+3. **Senha MySQL pré-preenchida (decisão do usuário).** A linha não commitada `mysql_pass_entry.insert(0, "51Ncr0n1z4d0r@2025@!@#")` (`setup_wizard.py`) foi **mantida** a pedido do usuário (instalação "just works", aceitando o trade-off de a senha ficar visível enquanto o repo está público). ⚠️ Isso reintroduz no repo público a credencial removida na v1.1.3. Revisitar quando o repo voltar a privado (o fix do downloader v1.1.3 já suporta auth via Bearer).
+
+**Decisão de escopo:** a **repaginação total do frontend** (tema "escuro refinado") foi adiada para a **v1.1.5** (separar o redesign grande/arriscado do fix crítico). Plano gravado em `~/.claude/plans/chat-atue-como-um-kind-falcon.md` (Parte 5): criar `src/gui/theme.py` centralizando cores/fontes hoje espalhadas e reaplicar nos 4 arquivos da GUI sem mexer em lógica/layout.
+
+**Smoke tests (todos passaram):**
+- `py_compile` em `setup_wizard.py`, `backup_engine.py`, `settings.py`.
+- `_extract_file_path`: `localhost:C:\...` → `C:\...`; `192.168.1.5/3050:C:\...` → `C:\...`; path puro inalterado; `""` → `""`.
+- `Settings.save(p)/load(p)` persiste `sync_replicacao_enabled=False` e relê `False`; default da dataclass = `True`.
+
+**Build/release:**
+- Rebuild PyInstaller: `..\venv\Scripts\pyinstaller.exe topbackup.spec --noconfirm` → `dist/TopBackup.exe` 38.263.863 bytes, VERSION=1.1.4. Este exe é a mídia de instalação → instalações novas já saem em 1.1.4 (sem auto-update forçado no 1º boot, que vinha causando transtorno).
+- `src/version.py` = 1.1.4.
+- Commit + push (sem co-autor) + INSERT em `VERSAO_APP`.
+
+**Arquivos modificados:**
+- `TopBackup/src/gui/setup_wizard.py` (fix validação + checkbox ServReplicacao + persistência; senha hardcoded mantida)
+- `TopBackup/src/version.py` (1.1.4)
+- `TopBackup/CLAUDE.md` (esta entrada + "Versão Atual")
+- `TopBackup/dist/TopBackup.exe` (rebuild)
+
+---
 
 ### 2026-05-08 — Release v1.1.3 publicada (com fixes adicionais do `<senha>`)
 
