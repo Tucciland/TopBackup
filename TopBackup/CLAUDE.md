@@ -223,7 +223,7 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ### 🔄 Em Progresso
 
-(Nenhum item no momento)
+- **v1.1.5 — Redesign do frontend ("escuro refinado")**: planejado, **não iniciado** (adiado em 2026-06-10 para depois de validar a v1.1.4 em campo). Escopo, direção, mapa atual da GUI e plano de execução na seção **"Próxima Release Planejada — v1.1.5"** logo antes do Histórico de Sessões.
 
 ### 📋 Pendente / Futuro
 
@@ -242,6 +242,39 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 - Credenciais MySQL em texto plano no config.json
 - Paths com caracteres especiais podem causar issues
 - Timeout de 1h para gbak pode não ser suficiente para DBs muito grandes
+
+---
+
+## Próxima Release Planejada — v1.1.5: Redesign do Frontend
+
+**Status:** planejada, **NÃO iniciada**. Decisão de 2026-06-10: adiada para depois de validar a v1.1.4 em campo. Esta seção é a **fonte canônica** do plano (o plano detalhado original ficou em `~/.claude/plans/chat-atue-como-um-kind-falcon.md`, que pode não existir em sessões futuras).
+
+**Motivação.** Feedback de que a interface "parece genérica / cara de IA" — hoje é o tema **escuro + azul padrão do CustomTkinter** sem personalização. Objetivo: repaginação visual total, **mantendo performance, usabilidade e rapidez**, com a regra dura de que **nada pode quebrar**.
+
+**Direção escolhida pelo usuário: "escuro refinado".**
+- Mantém o modo escuro, mas com paleta intencional: fundo grafite (ex. `#1a1a1a` / `#212121`), **cinzas reais em vez do azul padrão**, **1 cor de destaque marcante** (verde/âmbar) para ações e status, cards com contraste, hierarquia tipográfica clara.
+- Meta: sumir com o "cara de template".
+
+**Restrição técnica (não negociável): manter CustomTkinter.**
+- Zero troca de framework (trocar p/ PyQt etc. = risco alto, quebraria tudo). A mudança é **cosmética**: paleta, tipografia, espaçamento, corner radius, hierarquia de cards — **sem alterar lógica nem a estrutura de layout** (só atributos `fg_color` / `text_color` / `hover_color` / `font` / `corner_radius`).
+
+**Abordagem: centralizar o tema.**
+- Criar **`src/gui/theme.py`** com constantes de cor e tamanhos de fonte (hoje espalhados/hardcoded). Vira o **único ponto de mudança** → baixo risco. Importar e usar nos 4 arquivos da GUI.
+
+**Mapa atual da GUI (levantado em 2026-06-10 — base para o redesign):**
+- Framework: **CustomTkinter 5.2.2** (`requirements.txt`). Tkinter-based, **sem QSS** — estilo via parâmetros por widget (`fg_color`, `text_color`, `hover_color`).
+- Arquivos: `src/gui/main_window.py` (~691 linhas — dashboard/status/controles), `dialogs.py` (~691 — progresso, logs, configurações, agendas), `setup_wizard.py` (~720 — wizard 4 etapas), `tray_icon.py` (~144 — bandeja).
+- **Tema global** setado em **`main_window.py:44-45`**: `ctk.set_appearance_mode("dark")` + `ctk.set_default_color_theme("blue")` ← ponto único do "azul padrão".
+- **Cores hardcoded espalhadas** (alvos do `theme.py`): `#1f538d` (header azul do wizard, `setup_wizard.py`), `#c0392b` / `#a93226` (botão "Limpar Arquivo" vermelho, `dialogs.py`), e literais `green` / `orange` / `red` para status em `main_window.py` / `dialogs.py`.
+- **Fontes inline**: `CTkFont(size=24/18/14/12/11, weight="bold")` em títulos/seções; `("Consolas", 11)` no log viewer.
+- Layout: `pack` geometry; `CTkScrollableFrame` nos forms longos (wizard, configurações). **Não** existe módulo de tema/estilo central hoje → por isso o passo 1 é criar `theme.py`.
+
+**Plano de execução (quando retomar):**
+1. Criar `src/gui/theme.py` (paleta grafite + cor de destaque + escala de fontes + corner radius).
+2. Definir destaque/modo via `theme.py` em vez do `set_default_color_theme("blue")`.
+3. Reaplicar nos 4 arquivos da GUI, trocando cores/fontes literais pelas constantes — **sem tocar em lógica/layout**.
+4. Smoke test visual: `python src/main.py` → percorrer dashboard, wizard (4 etapas), Configurações (4 abas), log viewer, bandeja. Conferir contraste/legibilidade.
+5. Release **v1.1.5** pelo runbook padrão (bump `version.py` → build PyInstaller → commit/push **sem co-autor** → INSERT em `VERSAO_APP`).
 
 ---
 
@@ -936,6 +969,11 @@ Implementado suporte opcional a um segundo banco Firebird na configuração do a
 ---
 
 ## Notas para Próxima Sessão
+
+### Prioridade Atual (2026-06-10)
+- **v1.1.5 — redesign do frontend "escuro refinado"**: próxima tarefa principal. Escopo, direção, mapa da GUI e plano completos na seção **"Próxima Release Planejada — v1.1.5"**. Manter CustomTkinter, criar `src/gui/theme.py`, **nada pode quebrar**.
+- **Acompanhar adoção da v1.1.4** em campo: clientes saindo do bug "Banco não encontrado" no wizard. Última versão em `VERSAO_APP` = ID=17, v1.1.4 (2026-06-10). Query útil: `SELECT VERSAO_LOCAL, COUNT(*) FROM EMPRESA GROUP BY VERSAO_LOCAL ORDER BY 2 DESC`.
+- **Lembrete fixo:** todos os commits/pushes **sem co-autor** (`Co-Authored-By`).
 
 ### Rotina Normal
 1. Ler este arquivo para contexto
