@@ -180,8 +180,8 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ## Status do Desenvolvimento
 
-**Versão Atual:** 1.1.4
-**Última Atualização:** 2026-06-10
+**Versão Atual:** 1.1.5
+**Última Atualização:** 2026-06-15
 
 ### ✅ Implementado e Funcionando
 
@@ -223,7 +223,7 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ### 🔄 Em Progresso
 
-- **v1.1.5 — Redesign do frontend ("escuro refinado")**: planejado, **não iniciado** (adiado em 2026-06-10 para depois de validar a v1.1.4 em campo). Escopo, direção, mapa atual da GUI e plano de execução na seção **"Próxima Release Planejada — v1.1.5"** logo antes do Histórico de Sessões.
+- **Redesign do frontend ("escuro refinado")**: planejado, **não iniciado** e **adiado sem data** (2026-06-15 — usuário avisa quando retomar). Número a definir na retomada (o v1.1.5 foi usado pelo fix do gbak). Escopo, direção, mapa atual da GUI e plano de execução na seção **"Release Planejada (sem data) — Redesign do Frontend"** logo antes do Histórico de Sessões.
 
 ### 📋 Pendente / Futuro
 
@@ -245,9 +245,9 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 
 ---
 
-## Próxima Release Planejada — v1.1.5: Redesign do Frontend
+## Release Planejada (sem data) — Redesign do Frontend
 
-**Status:** planejada, **NÃO iniciada**. Decisão de 2026-06-10: adiada para depois de validar a v1.1.4 em campo. Esta seção é a **fonte canônica** do plano (o plano detalhado original ficou em `~/.claude/plans/chat-atue-como-um-kind-falcon.md`, que pode não existir em sessões futuras).
+**Status:** planejada, **NÃO iniciada** e **adiada sem data** (decisão de 2026-06-15: o usuário pediu para deixar o redesign "para bem depois, ele avisa"). O número **v1.1.5 foi consumido pelo fix do gbak** (porta não-padrão); este redesign será **renumerado quando retomado**. Esta seção continua sendo a **fonte canônica** do plano (o plano detalhado original ficou em `~/.claude/plans/chat-atue-como-um-kind-falcon.md`, que pode não existir em sessões futuras).
 
 **Motivação.** Feedback de que a interface "parece genérica / cara de IA" — hoje é o tema **escuro + azul padrão do CustomTkinter** sem personalização. Objetivo: repaginação visual total, **mantendo performance, usabilidade e rapidez**, com a regra dura de que **nada pode quebrar**.
 
@@ -279,6 +279,43 @@ SELECT * FROM VERSAO_APP ORDER BY DATA_LANCAMENTO DESC LIMIT 1;
 ---
 
 ## Histórico de Sessões
+
+### 2026-06-15 — Release v1.1.5: fix backup gbak em porta não-padrão (3051) / host remoto
+
+**Contexto.** Feedback de campo: backup falha quando o cliente roda **dois Firebird na mesma máquina** — o que o cliente já usa na porta padrão **3050** + o nosso (2.5) adicionado na **3051**. O banco principal é configurado como `localhost/3051:c:\TOPSOFT\Dados\dados.fdb` e o backup falha no log com `GBACK FALHOU: gback error unsupported on disk structure`. Na porta padrão 3050 sempre funcionou.
+
+**Causa-raiz (confirmada lendo o código).** Em `src/core/backup_engine.py`, `_extract_file_path()` (regex `([A-Za-z]:[\\\/].+)$`) **descartava host E porta**, deixando só `c:\TOPSOFT\Dados\dados.fdb`. O comando virava `gbak -b ... c:\TOPSOFT\Dados\dados.fdb backup.fbk` — **sem porta** → o gbak conecta no servidor Firebird **padrão (3050)**, que no cenário é o Firebird *do cliente* (versão diferente). Esse servidor tenta abrir o `.fdb` da nossa instância 2.5 na 3051 → ODS incompatível → `unsupported on-disk structure`. Com um único Firebird 2.5 na 3050 o caminho puro cai no servidor certo, por isso só quebrava na 3051. O "Testar Conexão" do wizard passa porque usa o driver `fdb`, que respeita `host/porta:caminho` nativamente — só o gbak (que recebe a string crua) ignorava a porta.
+
+**Mudanças aplicadas (`src/core/backup_engine.py`, único arquivo de lógica):**
+
+1. Novos helpers de parsing:
+   - `_split_connection_string(cs)` → `(prefixo, caminho)`; `_extract_file_path()` refatorado para reusá-lo **mantendo o retorno idêntico** (o wizard depende dele — inalterado).
+   - `_is_remote_connection(cs)` → True só para host remoto (não localhost/127.0.0.1/::1).
+   - `_build_gbak_source(cs)` → se houver **porta != 3050 OU host remoto**, retorna a **string completa** (gbak conecta via TCP na instância certa); caso contrário, retorna só o caminho local (comportamento histórico que funciona na 3050).
+   - Constantes `FIREBIRD_DEFAULT_PORT = "3050"` e `_LOCAL_HOSTS`.
+
+2. `_execute_gbak()`: usa `gbak_source = _build_gbak_source(...)` no comando (no lugar do caminho cru); a checagem `os.path.exists` agora roda só quando **não é** conexão remota (no caso 3051 o arquivo é local e continua validado; só host remoto pula).
+
+**Decisão de escopo (confirmada pelo usuário):** tratar **porta explícita + host remoto** (não só o caso local 3051). Frontend "escuro refinado" **adiado sem data** (usuário avisa) — o número v1.1.5 foi usado por este fix; o redesign será renumerado.
+
+**Smoke tests (todos passaram, contra o módulo real via `python -c "from src.core.backup_engine import BackupEngine"`):**
+- `py_compile` em `backup_engine.py`.
+- `_build_gbak_source`: `localhost/3051:...` e `192.168.1.5[/3051]:...` → string completa; `localhost:...`, `localhost/3050:...`, caminho puro → só caminho local; `""` → `""`.
+- `_extract_file_path` **inalterado** em todos os casos (garante wizard intacto).
+- `_is_remote_connection`: localhost/3051→False, 192.168.x→True, path puro→False.
+
+**Validação manual em campo** (não reproduzível localmente sem 2ª instância):
+`gbak -b -user SYSDBA -pass masterkey localhost/3051:c:\TOPSOFT\Dados\dados.fdb c:\temp\teste.fbk` deve gerar o `.fbk` sem o erro de ODS.
+
+**Build/release:** `version.py` = 1.1.5; rebuild PyInstaller (`dist/TopBackup.exe`); commit + push **sem co-autor**; INSERT em `VERSAO_APP`.
+
+**Arquivos modificados:**
+- `TopBackup/src/core/backup_engine.py` (helpers de parsing + `_execute_gbak`)
+- `TopBackup/src/version.py` (1.1.5)
+- `TopBackup/CLAUDE.md` (esta entrada + "Versão Atual" + redesign adiado)
+- `TopBackup/dist/TopBackup.exe` (rebuild)
+
+---
 
 ### 2026-06-10 — Release v1.1.4: fix "Banco não encontrado" no wizard + toggle ServReplicacao na instalação
 
@@ -970,9 +1007,9 @@ Implementado suporte opcional a um segundo banco Firebird na configuração do a
 
 ## Notas para Próxima Sessão
 
-### Prioridade Atual (2026-06-10)
-- **v1.1.5 — redesign do frontend "escuro refinado"**: próxima tarefa principal. Escopo, direção, mapa da GUI e plano completos na seção **"Próxima Release Planejada — v1.1.5"**. Manter CustomTkinter, criar `src/gui/theme.py`, **nada pode quebrar**.
-- **Acompanhar adoção da v1.1.4** em campo: clientes saindo do bug "Banco não encontrado" no wizard. Última versão em `VERSAO_APP` = ID=17, v1.1.4 (2026-06-10). Query útil: `SELECT VERSAO_LOCAL, COUNT(*) FROM EMPRESA GROUP BY VERSAO_LOCAL ORDER BY 2 DESC`.
+### Prioridade Atual (2026-06-15)
+- **Acompanhar adoção da v1.1.5** em campo: clientes com Firebird em porta não-padrão (3051) saindo do erro `unsupported on disk structure` no backup. Query útil: `SELECT VERSAO_LOCAL, COUNT(*) FROM EMPRESA GROUP BY VERSAO_LOCAL ORDER BY 2 DESC`.
+- **Redesign do frontend "escuro refinado"**: **adiado sem data** (usuário avisa quando retomar). Plano na seção **"Release Planejada (sem data) — Redesign do Frontend"**. Manter CustomTkinter, criar `src/gui/theme.py`, **nada pode quebrar**. Renumerar (v1.1.5 já foi usado).
 - **Lembrete fixo:** todos os commits/pushes **sem co-autor** (`Co-Authored-By`).
 
 ### Rotina Normal

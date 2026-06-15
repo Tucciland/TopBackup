@@ -23,6 +23,12 @@ from ..utils.logger import get_logger
 from ..utils.file_utils import FileUtils
 
 
+# Porta padrão do Firebird. Quando a conexão usa essa porta (ou nenhuma) com host
+# local, o gbak acessa o arquivo localmente (comportamento histórico que funciona).
+FIREBIRD_DEFAULT_PORT = "3050"
+_LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
+
+
 @dataclass
 class BackupResult:
     """Resultado de um backup"""
@@ -64,9 +70,34 @@ class BackupEngine:
         self._cancel_requested = True
 
     @staticmethod
+    def _split_connection_string(connection_string: str) -> Tuple[str, str]:
+        """
+        Separa uma string de conexão Firebird em (prefixo, caminho_arquivo).
+
+        prefixo = 'host[/porta]:' (pode ser vazio quando é só caminho)
+        caminho = 'C:\\...' (caminho local do .fdb)
+
+        Exemplos:
+            localhost:C:\\dados\\DADOS.FDB        -> ('localhost:', 'C:\\dados\\DADOS.FDB')
+            localhost/3051:C:\\dados\\DADOS.FDB   -> ('localhost/3051:', 'C:\\dados\\DADOS.FDB')
+            C:\\dados\\DADOS.FDB                  -> ('', 'C:\\dados\\DADOS.FDB')
+        """
+        if not connection_string:
+            return "", connection_string
+
+        # Procura por letra de drive do Windows (C:, D:, etc.) no fim da string.
+        match = re.search(r'([A-Za-z]:[\\\/].+)$', connection_string)
+        if match:
+            return connection_string[:match.start()], match.group(1)
+
+        # Se não encontrou padrão Windows, retorna original como caminho.
+        return "", connection_string
+
+    @staticmethod
     def _extract_file_path(connection_string: str) -> str:
         """
         Extrai o caminho do arquivo de uma string de conexão Firebird.
+        Comportamento mantido (usado também pela validação do Setup Wizard).
 
         Exemplos:
             localhost:C:\\Gestor\\dados\\DADOS.FDB -> C:\\Gestor\\dados\\DADOS.FDB
@@ -74,17 +105,40 @@ class BackupEngine:
             192.168.1.1:C:\\Gestor\\dados\\DADOS.FDB -> C:\\Gestor\\dados\\DADOS.FDB
             C:\\Gestor\\dados\\DADOS.FDB -> C:\\Gestor\\dados\\DADOS.FDB (sem mudança)
         """
-        if not connection_string:
+        return BackupEngine._split_connection_string(connection_string)[1]
+
+    @staticmethod
+    def _is_remote_connection(connection_string: str) -> bool:
+        """True se a string de conexão aponta para um host remoto (não localhost)."""
+        prefix, _ = BackupEngine._split_connection_string(connection_string)
+        if not prefix:
+            return False
+        host = prefix.rstrip(':').partition('/')[0].strip().lower()
+        return host != "" and host not in _LOCAL_HOSTS
+
+    @staticmethod
+    def _build_gbak_source(connection_string: str) -> str:
+        """
+        Decide o argumento de origem passado ao gbak.
+
+        - host remoto OU porta != 3050  -> retorna a string COMPLETA, para o gbak
+          conectar via TCP na instância/porta correta (resolve o caso de múltiplos
+          Firebird na mesma máquina, ex.: nosso 2.5 na porta 3051).
+        - caso contrário (host local + porta padrão ou sem porta) -> retorna só o
+          caminho do arquivo (acesso local, comportamento histórico que funciona).
+        """
+        prefix, file_path = BackupEngine._split_connection_string(connection_string)
+        if not prefix:
+            return file_path
+
+        spec = prefix.rstrip(':')
+        host, _, port = spec.partition('/')
+        is_remote = host.strip() != "" and host.strip().lower() not in _LOCAL_HOSTS
+        is_nondefault_port = bool(port.strip()) and port.strip() != FIREBIRD_DEFAULT_PORT
+
+        if is_remote or is_nondefault_port:
             return connection_string
-
-        # Padrão: hostname[:porta]:caminho
-        # Procura por letra de drive do Windows (C:, D:, etc.)
-        match = re.search(r'([A-Za-z]:[\\\/].+)$', connection_string)
-        if match:
-            return match.group(1)
-
-        # Se não encontrou padrão Windows, retorna original
-        return connection_string
+        return file_path
 
     def execute_backup(
         self,
@@ -284,14 +338,19 @@ class BackupEngine:
         gbak_path = self.settings.firebird.gbak_path
         db_path_raw = database_path or self.settings.firebird.database_path
 
-        # Extrai caminho do arquivo da string de conexão (remove localhost:, etc.)
-        db_path = self._extract_file_path(db_path_raw)
+        # Caminho local do arquivo (para checagem de existência quando o banco é local).
+        db_file_path = self._extract_file_path(db_path_raw)
+        # Origem efetiva passada ao gbak: string completa quando há porta != 3050 ou
+        # host remoto (gbak conecta via TCP na instância certa); senão, caminho local.
+        gbak_source = self._build_gbak_source(db_path_raw)
 
         if not os.path.exists(gbak_path):
             raise BackupError(f"gbak não encontrado: {gbak_path}")
 
-        if not os.path.exists(db_path):
-            raise BackupError(f"Banco de dados não encontrado: {db_path}")
+        # Só valida existência local quando o banco está nesta máquina. Para host
+        # remoto o .fdb não é visível localmente; deixamos o gbak validar.
+        if not self._is_remote_connection(db_path_raw) and not os.path.exists(db_file_path):
+            raise BackupError(f"Banco de dados não encontrado: {db_file_path}")
 
         # Cria diretório temporário
         temp_dir = FileUtils.get_temp_directory()
@@ -308,7 +367,7 @@ class BackupEngine:
             "-b",
             "-user", self.settings.firebird.user,
             "-pass", self.settings.firebird.password,
-            db_path,
+            gbak_source,
             str(fbk_path)
         ]
 
